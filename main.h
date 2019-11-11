@@ -8,7 +8,7 @@
 #include "../../licensedinterfaces/basicstringinterface.h"
 #include "x2dome.h"
 
-#define PLUGIN_NAME "X2Dome NexDome"
+#define PLUGIN_NAME "X2Dome RTI-RoR"
 
 class SerXInterface;
 class TheSkyXFacadeForDriversInterface;
