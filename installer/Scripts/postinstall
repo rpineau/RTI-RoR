@@ -18,13 +18,12 @@ if [ ! -d "$TheSkyX_Path" ]; then
     exit 1
 fi
 
-if [ -d "$TheSkyX_Path/PlugIns64" ]; then
-	PLUGINS_DIR="$TheSkyX_Path/PlugIns64"
+if [ -d "$TheSkyX_Path/PlugIns" ]; then
+	PLUGINS_DIR="$TheSkyX_Path/PlugIns"
 elif [ -d "$TheSkyX_Path/Resources/Common/PlugIns64" ]; then
 	PLUGINS_DIR="$TheSkyX_Path/Resources/Common/PlugIns64"
 else
 	PLUGINS_DIR="$TheSkyX_Path/Resources/Common/PlugIns"
-fi
 
 echo "Installing in $PLUGINS_DIR/DomePlugIns/"
 
