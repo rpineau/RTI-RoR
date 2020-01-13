@@ -1,0 +1,3 @@
+//See hardwarelist.txt for details on this file format.
+//Version|Manufacturer|Model|Comment|MapsTo|PlugInDllName|X2Developer|Windows|Mac|Linux|
+2|RTI-Zone|RTI-RoR|RTI-Zone Roll off Roof controller| |libRTI-RoR||1|1|1|
