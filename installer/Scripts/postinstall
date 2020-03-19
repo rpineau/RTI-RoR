@@ -30,10 +30,16 @@ echo "Installing in $PLUGINS_DIR/DomePlugIns/"
 
 cp "/tmp/RTI-RoR_X2/domelist RTI-RoR.txt" "$TheSkyX_Path/Resources/Common/Miscellaneous Files/"
 if [ "$?" -ne "0" ]; then exit 1; fi
+
+rm -f "$PLUGINS_DIR/DomePlugIns/RTI-RoR.ui"
 cp "/tmp/RTI-RoR_X2/RTI-RoR.ui" "$PLUGINS_DIR/DomePlugIns/"
 if [ "$?" -ne "0" ]; then exit 1; fi
+
+rm -f "$PLUGINS_DIR/DomePlugIns/RTI.png"
 cp "/tmp/RTI-RoR_X2/RTI.png" "$PLUGINS_DIR/DomePlugIns/"
 if [ "$?" -ne "0" ]; then exit 1; fi
+
+rm -f "$PLUGINS_DIR/DomePlugIns/libRTI-RoR.dylib"
 cp "/tmp/RTI-RoR_X2/libRTI-RoR.dylib" "$PLUGINS_DIR/DomePlugIns/"
 if [ "$?" -ne "0" ]; then exit 1; fi
 
