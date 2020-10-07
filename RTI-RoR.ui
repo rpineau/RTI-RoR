@@ -384,7 +384,7 @@
        <rect>
         <x>160</x>
         <y>0</y>
-        <width>280</width>
+        <width>297</width>
         <height>80</height>
        </rect>
       </property>
@@ -392,13 +392,13 @@
        <string/>
       </property>
       <property name="pixmap">
-       <pixmap>RTI.png</pixmap>
+       <pixmap>RTI-Zone.png</pixmap>
       </property>
       <property name="alignment">
        <set>Qt::AlignCenter</set>
       </property>
       <property name="X2_PhotoFileName" stdset="0">
-       <string>RTI.png</string>
+       <string>RTI-Zone.png</string>
       </property>
      </widget>
      <widget class="QPushButton" name="pushButtonCancel">

@@ -74,7 +74,7 @@ int CRTIRoR::Connect(const char *pszPort)
 #endif
 
     // 9600 8N1
-    nErr = m_pSerx->open(pszPort, 9600, SerXInterface::B_NOPARITY, "-DTR_CONTROL 1");
+    nErr = m_pSerx->open(pszPort, 115200, SerXInterface::B_NOPARITY);
     if(nErr) {
         m_bIsConnected = false;
         return nErr;
