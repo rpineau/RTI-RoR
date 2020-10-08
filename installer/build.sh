@@ -9,7 +9,7 @@ fi
 
 mkdir -p ROOT/tmp/RTI-RoR_X2/
 cp "../RTI-RoR.ui" ROOT/tmp/RTI-RoR_X2/
-cp "../RTI.png" ROOT/tmp/RTI-RoR_X2/
+cp "../RTI-Zone.png" ROOT/tmp/RTI-RoR_X2/
 cp "../domelist RTI-RoR.txt" ROOT/tmp/RTI-RoR_X2/
 cp "../build/Release/libRTI-RoR.dylib" ROOT/tmp/RTI-RoR_X2/
 
