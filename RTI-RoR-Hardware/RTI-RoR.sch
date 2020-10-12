@@ -12751,6 +12751,7 @@ DIN A4, landscape with extra doc field</description>
 <part name="PCB1" library="arduino_shield" deviceset="ARDUINO_DUE_SHIELD_SHORT" device=""/>
 <part name="R2" library="rti" deviceset="R-EU" device="'0805'" value="100K 0.1%"/>
 <part name="C3" library="rti" deviceset="C-EU" device="'0805'" value="10uF"/>
+<part name="X7" library="con-ptr500" deviceset="AK500/2" device=""/>
 </parts>
 <sheets>
 <sheet>
@@ -12804,6 +12805,8 @@ DIN A4, landscape with extra doc field</description>
 <instance part="PCB1" gate="G$1" x="106.68" y="45.72" rot="R270"/>
 <instance part="R2" gate="G$1" x="5.08" y="129.54" rot="R90"/>
 <instance part="C3" gate="G$1" x="185.42" y="53.34"/>
+<instance part="X7" gate="-1" x="43.18" y="22.86" rot="R180"/>
+<instance part="X7" gate="-2" x="43.18" y="27.94" rot="R180"/>
 </instances>
 <busses>
 </busses>
@@ -13325,11 +13328,42 @@ DIN A4, landscape with extra doc field</description>
 <wire x1="5.08" y1="160.02" x2="5.08" y2="162.56" width="0.1524" layer="91"/>
 </segment>
 </net>
+<net name="XBEE_RESET" class="0">
+<segment>
+<wire x1="137.16" y1="66.04" x2="134.62" y2="66.04" width="0.1524" layer="91"/>
+<label x="137.16" y="66.04" size="1.016" layer="95" xref="yes"/>
+<pinref part="PCB1" gate="G$1" pin="8"/>
+</segment>
+</net>
 <net name="N$5" class="0">
 <segment>
 <pinref part="R7" gate="G$1" pin="1"/>
 <pinref part="R2" gate="G$1" pin="2"/>
 <wire x1="5.08" y1="137.16" x2="5.08" y2="134.62" width="0.1524" layer="91"/>
+</segment>
+</net>
+<net name="AT_PARK_PIN_LOOP" class="0">
+<segment>
+<pinref part="PCB1" gate="G$1" pin="A4"/>
+<wire x1="73.66" y1="43.18" x2="76.2" y2="43.18" width="0.1524" layer="91"/>
+<label x="73.66" y="43.18" size="1.016" layer="95" rot="R180" xref="yes"/>
+</segment>
+<segment>
+<pinref part="X7" gate="-2" pin="KL"/>
+<wire x1="35.56" y1="27.94" x2="38.1" y2="27.94" width="0.1524" layer="91"/>
+<label x="35.56" y="27.94" size="1.016" layer="95" rot="R180" xref="yes"/>
+</segment>
+</net>
+<net name="AT_PARK_PIN" class="0">
+<segment>
+<pinref part="PCB1" gate="G$1" pin="A5"/>
+<wire x1="73.66" y1="40.64" x2="76.2" y2="40.64" width="0.1524" layer="91"/>
+<label x="73.66" y="40.64" size="1.016" layer="95" rot="R180" xref="yes"/>
+</segment>
+<segment>
+<pinref part="X7" gate="-1" pin="KL"/>
+<wire x1="35.56" y1="22.86" x2="38.1" y2="22.86" width="0.1524" layer="91"/>
+<label x="35.56" y="22.86" size="1.016" layer="95" rot="R180" xref="yes"/>
 </segment>
 </net>
 </nets>
