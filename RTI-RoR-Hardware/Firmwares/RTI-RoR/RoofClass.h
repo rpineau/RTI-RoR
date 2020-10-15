@@ -1,15 +1,6 @@
 // Roll off roof code based on the NexDome code.
 
-#pragma once
-
-#if defined(ARDUINO) && ARDUINO >= 100
-#include "arduino.h"
-#else
-#include "WProgram.h"
-#endif
-
 #include <AccelStepper.h>
-#include <DueFlashStorage.h>
 #include <DueFlashStorage.h>
 #include "StopWatch.h"
 
@@ -49,8 +40,8 @@ Configuration config;
 #define     BUTTON_OPEN              5
 #define     BUTTON_CLOSE             6
 #define     RAIN_SENSOR_PIN          7  // Digital Input from RG11
-#define     AT_PARK_PIN             A5
-#define     AT_PARK_PIN_LOOP        A4
+#define     AT_PARK_PIN             59  // due
+#define     AT_PARK_PIN_LOOP        58  // due
 #define     VOLTAGE_MONITOR_PIN     A0
 
 
@@ -71,6 +62,83 @@ StopWatch watchdogTimer;
 StopWatch debounceTimer;
 
 volatile bool       atPark = false;
+
+/*
+ * As demonstrated by RCArduino and modified by BKM:
+ * pick clock that provides the least error for specified frequency.
+ * https://github.com/SomeRandomGuy/DueTimer
+ * https://github.com/ivanseidel/DueTimer
+ */
+uint8_t pickClock(uint32_t frequency, uint32_t& retRC)
+{
+    /*
+        Timer       Definition
+        TIMER_CLOCK1    MCK/2
+        TIMER_CLOCK2    MCK/8
+        TIMER_CLOCK3    MCK/32
+        TIMER_CLOCK4    MCK/128
+    */
+    struct {
+        uint8_t flag;
+        uint8_t divisor;
+    } clockConfig[] = {
+        { TC_CMR_TCCLKS_TIMER_CLOCK1, 2 },
+        { TC_CMR_TCCLKS_TIMER_CLOCK2, 8 },
+        { TC_CMR_TCCLKS_TIMER_CLOCK3, 32 },
+        { TC_CMR_TCCLKS_TIMER_CLOCK4, 128 }
+    };
+    float ticks;
+    float error;
+    int clkId = 3;
+    int bestClock = 3;
+    float bestError = 1.0;
+    do
+    {
+        ticks = (float) VARIANT_MCK / (float) frequency / (float) clockConfig[clkId].divisor;
+        error = abs(ticks - round(ticks));
+        if (abs(error) < bestError)
+        {
+            bestClock = clkId;
+            bestError = error;
+        }
+    } while (clkId-- > 0);
+    ticks = (float) VARIANT_MCK / (float) frequency / (float) clockConfig[bestClock].divisor;
+    retRC = (uint32_t) round(ticks);
+    return clockConfig[bestClock].flag;
+}
+
+
+void startTimer(Tc *tc, uint32_t channel, IRQn_Type irq, uint32_t frequency)
+{
+    uint32_t rc = 0;
+    uint8_t clock;
+    pmc_set_writeprotect(false);
+    pmc_enable_periph_clk((uint32_t)irq);
+    clock = pickClock(frequency, rc);
+
+    TC_Configure(tc, channel, TC_CMR_WAVE | TC_CMR_WAVSEL_UP_RC | clock);
+    TC_SetRA(tc, channel, rc/2); //50% high, 50% low
+    TC_SetRC(tc, channel, rc);
+    TC_Start(tc, channel);
+    tc->TC_CHANNEL[channel].TC_IER=TC_IER_CPCS;
+    tc->TC_CHANNEL[channel].TC_IDR=~TC_IER_CPCS;
+
+    NVIC_EnableIRQ(irq);
+}
+
+void stopTimer(Tc *tc, uint32_t channel, IRQn_Type irq)
+{
+    NVIC_DisableIRQ(irq);
+    TC_Stop(tc, channel);
+}
+
+// DUE stepper callback
+void TC3_Handler()
+{
+    TC_GetStatus(TC1, 0);
+    stepper.run();
+}
+
 
 class RoofClass
 {
@@ -117,9 +185,13 @@ public:
     byte        GetVoltsClose();
     void        SetVoltsClose(const byte);
 
-    void        EnableOutputs(const bool);
+    void        EnableMotor(const bool);
     void        Run();
     void        Stop();
+    static void motorStop();
+    void        motorMoveTo(const long newPosition);
+    void        motorMoveRelative(const long amount);
+    void        stopInterrupt();
     void        Abort();
     void        Calibrate();
     void        LoadFromEEProm();
@@ -171,7 +243,7 @@ RoofClass::RoofClass()
     SetAcceleration(m_Config.acceleration);
     SetMaxSpeed(m_Config.maxSpeed);
     stepper.setEnablePin(STEPPER_ENABLE_PIN);
-    EnableOutputs(false);
+    EnableMotor(false);
     GetEndSwitchStatus();
     // set interrupts
     attachInterrupt(digitalPinToInterrupt(CLOSED_PIN), ClosedInterrupt, CHANGE);
@@ -207,7 +279,7 @@ void RoofClass::ClosedInterrupt()
     }
 
     if(shutterState == CLOSED)
-        stepper.stop();
+        RoofClass::motorStop();
 }
 
 void RoofClass::OpenInterrupt()
@@ -222,7 +294,7 @@ void RoofClass::OpenInterrupt()
     }
 
     if(shutterState == OPEN) {
-        stepper.stop();
+        RoofClass::motorStop();
         }
 }
 
@@ -307,7 +379,7 @@ bool RoofClass::DoButtons()
     }
 
     if (digitalRead(whichButtonPressed) == !PRESSED && lastButtonPressed > 0) {
-        Stop();
+        motorStop();
         lastButtonPressed = whichButtonPressed = 0;
         bButtonUsed = false;
     }
@@ -431,11 +503,14 @@ String RoofClass::GetVoltString()
 }
 
 // Setters
-void RoofClass::EnableOutputs(const bool newState)
+void RoofClass::EnableMotor(const bool newState)
 {
     if (newState == false) {
         digitalWrite(STEPPER_ENABLE_PIN, HIGH);
         DBPrintln("Outputs disabled");
+#if defined ARDUINO_DUE
+        stopInterrupt();
+#endif
     }
     else {
         digitalWrite(STEPPER_ENABLE_PIN, LOW);
@@ -563,8 +638,8 @@ void RoofClass::GotoPosition(const unsigned long newPos)
     }
 
     if (doMove) {
-        EnableOutputs(true);
-        stepper.moveTo(newPos);
+        EnableMotor(true);
+        motorMoveTo(newPos);
     }
 }
 
@@ -600,7 +675,7 @@ void RoofClass::Run()
             hitSwitch = true;
             doSync = true;
             shutterState = CLOSED;
-            stepper.stop();
+            motorStop();
             DBPrintln("Hit closed switch");
             DBPrintln("shutterState = CLOSED");
     }
@@ -608,7 +683,7 @@ void RoofClass::Run()
     if (digitalRead(OPENED_PIN) == HIGH && shutterState != CLOSING && hitSwitch == false) {
             hitSwitch = true;
             shutterState = OPEN;
-            stepper.stop();
+            motorStop();
             DBPrintln("Hit opened switch");
             DBPrintln("shutterState = OPEN");
     }
@@ -650,7 +725,7 @@ void RoofClass::Run()
         m_nLastButtonPressed = 0;
         m_bWasRunning = false;
         hitSwitch = false;
-        EnableOutputs(false);
+        EnableMotor(false);
         if (shutterState == OPEN) {// re-adjust the step per stroke
             open_min = int(stepper.currentPosition() * 0.9);
             open_max = int(stepper.currentPosition() * 1.1);
@@ -667,14 +742,10 @@ void RoofClass::Run()
     }
 }
 
-void RoofClass::Stop()
-{
-    stepper.stop();
-}
 
 void RoofClass::Abort()
 {
-    stepper.stop();
+    motorStop();
     shutterState = ERROR;
 }
 
@@ -687,5 +758,47 @@ void RoofClass::Calibrate()
         Open();
         isCalibrating = true;
     }
+}
+
+
+void RoofClass::motorStop()
+{
+    stepper.stop();
+
+}
+
+void RoofClass::stopInterrupt()
+{
+    DBPrintln("Stopping interrupt");
+    // stop interrupt timer
+    stopTimer(TC1, 0, TC3_IRQn);
+}
+
+void RoofClass::motorMoveTo(const long newPosition)
+{
+    EnableMotor(true);
+    stepper.moveTo(newPosition);
+
+    DBPrintln("Starting interrupt");
+    int nFreq;
+    nFreq = m_Config.maxSpeed *3 >20000 ? 20000 : m_Config.maxSpeed*3;
+    // start interrupt timer
+    // AccelStepper run() is called under a timer interrupt
+    startTimer(TC1, 0, TC3_IRQn, nFreq);
+}
+
+void RoofClass::motorMoveRelative(const long amount)
+{
+
+    EnableMotor(true);
+    stepper.move(amount);
+
+    DBPrintln("Starting interrupt");
+    int nFreq;
+    nFreq = m_Config.maxSpeed *3 >20000 ? 20000 : m_Config.maxSpeed*3;
+    // start interrupt timer
+    // AccelStepper run() is called under a timer interrupt
+    startTimer(TC1, 0, TC3_IRQn, nFreq);
+
 }
 
