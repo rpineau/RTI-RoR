@@ -40,6 +40,10 @@ DirExistsWarning=no
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
+[Dirs]
+Name: "{app}\Plugins\DomePlugIns";
+Name: "{app}\Plugins64\DomePlugIns";
+
 [Files]
 ; WIll also need to customise these!
 Source: "domelist NexDome.txt"; DestDir: "{app}\Miscellaneous Files"; Flags: ignoreversion
