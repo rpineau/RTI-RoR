@@ -1,6 +1,5 @@
-//
-//StopWatch class to to time accounting
-// R.P.
+// Rodolphe Pineau
+// Easy timer to check for time passed between a reset and elapsed call
 //
 
 #ifndef StopWatch_h
@@ -19,7 +18,7 @@ private:
 
 StopWatch::StopWatch()
 {
-	reset();
+    reset();
 }
 
 void StopWatch::reset()
@@ -33,4 +32,3 @@ unsigned long StopWatch::elapsed()
 }
 
 #endif
-// END OF FILE

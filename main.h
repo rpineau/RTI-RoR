@@ -8,7 +8,7 @@
 #include "../../licensedinterfaces/basicstringinterface.h"
 #include "x2dome.h"
 
-#define PLUGIN_NAME "X2Dome RTI-RoR"
+#define PLUGIN_NAME "X2Dome RTI-Dome"
 
 class SerXInterface;
 class TheSkyXFacadeForDriversInterface;
@@ -21,10 +21,10 @@ class TickCountInterface;
 
 extern "C" PlugInExport int sbPlugInDisplayName(BasicStringInterface& str);
 
-extern "C" PlugInExport int sbPlugInFactory(	const char* pszSelection, 
+extern "C" PlugInExport int sbPlugInFactory(	const char* pszSelection,
 												const int& nInstanceIndex,
-												SerXInterface					* pSerXIn, 
-												TheSkyXFacadeForDriversInterface* pTheSkyXIn, 
+												SerXInterface					* pSerXIn,
+												TheSkyXFacadeForDriversInterface* pTheSkyXIn,
 												SleeperInterface		* pSleeperIn,
 												BasicIniUtilInterface  * pIniUtilIn,
 												LoggerInterface			* pLoggerIn,

@@ -17,38 +17,21 @@
 #include "../../licensedinterfaces/tickcountinterface.h"
 #include "../../licensedinterfaces/serialportparams2interface.h"
 
-#include "rti_ror.h"
+#include "RTI-Dome.h"
+#include "StopWatch.h"
 
-
-class SerXInterface;		
-class TheSkyXFacadeForDriversInterface;
-class SleeperInterface;
-class BasicIniUtilInterface;
-class LoggerInterface;
-class MutexInterface;
-class BasicIniUtilInterface;
-class TickCountInterface;
-
-#define DRIVER_VERSION      2.12
-
-#define PARENT_KEY			"RTIRoR"
-#define CHILD_KEY_PORTNAME	"PortName"
-#define CHILD_KEY_TICKS_PER_REV "NbTicksPerRev"
-#define CHILD_KEY_HOME_AZ "HomeAzimuth"
-#define CHILD_KEY_PARK_AZ "ParkAzimuth"
-#define CHILD_KEY_SHUTTER_CONTROL "ShutterCtrl"
-#define CHILD_KEY_HOME_ON_PARK "HomeOnPark"
-#define CHILD_KEY_HOME_ON_UNPARK "HomeOnUnpark"
-#define CHILD_KEY_SHUTTER_OPEN_UPPER_ONLY "ShutterOpenUpperOnly"
-#define CHILD_KEY_ROOL_OFF_ROOF "RollOffRoof"
-#define CHILD_KEY_SHUTTER_OPER_ANY_Az "ShutterOperAnyAz"
+#define PARENT_KEY			        "RTI-Dome"
+#define CHILD_KEY_PORTNAME	        "PortName"
+#define CHILD_KEY_HOME_ON_PARK      "HomeOnPark"
+#define CHILD_KEY_HOME_ON_UNPARK    "HomeOnUnpark"
+#define CHILD_KEY_LOG_RAIN_STATUS   "LogRainStatus"
 
 #if defined(SB_WIN_BUILD)
-#define DEF_PORT_NAME					"COM1"
+#define DEF_PORT_NAME				"COM1"
 #elif defined(SB_MAC_BUILD)
-#define DEF_PORT_NAME					"/dev/cu.KeySerial1"
+#define DEF_PORT_NAME				"/dev/cu.Bluetooth-Incoming-Port"
 #elif defined(SB_LINUX_BUILD)
-#define DEF_PORT_NAME					"/dev/COM0"
+#define DEF_PORT_NAME				"/dev/ttyUSB0"
 #endif
 
 #define LOG_BUFFER_SIZE 256
@@ -64,10 +47,10 @@ class X2Dome: public DomeDriverInterface, public SerialPortParams2Interface, pub
 public:
 
 	/*!Standard X2 constructor*/
-	X2Dome(	const char* pszSelectionString, 
+	X2Dome(	const char* pszSelectionString,
 					const int& nISIndex,
 					SerXInterface*						pSerX,
-					TheSkyXFacadeForDriversInterface* pTheSkyXForMounts,
+					TheSkyXFacadeForDriversInterface* pTheSkyX,
 					SleeperInterface*				pSleeper,
 					BasicIniUtilInterface*			pIniUtil,
 					LoggerInterface*					pLogger,
@@ -77,38 +60,38 @@ public:
 
 	/*!\name DriverRootInterface Implementation
 	See DriverRootInterface.*/
-	//@{ 
+	//@{
 	virtual DeviceType							deviceType(void) {return DriverRootInterface::DT_DOME;}
 	virtual int									queryAbstraction(const char* pszName, void** ppVal);
-	//@} 
+	//@}
 
 	/*!\name LinkInterface Implementation
 	See LinkInterface.*/
-	//@{ 
+	//@{
 	virtual int									establishLink(void)						;
 	virtual int									terminateLink(void)						;
 	virtual bool								isLinked(void) const					;
-	//@} 
+	//@}
 
     virtual int initModalSettingsDialog(void){return 0;}
     virtual int execModalSettingsDialog(void);
 
 	/*!\name HardwareInfoInterface Implementation
 	See HardwareInfoInterface.*/
-	//@{ 
+	//@{
 	virtual void deviceInfoNameShort(BasicStringInterface& str) const					;
 	virtual void deviceInfoNameLong(BasicStringInterface& str) const					;
 	virtual void deviceInfoDetailedDescription(BasicStringInterface& str) const		;
 	virtual void deviceInfoFirmwareVersion(BasicStringInterface& str)					;
 	virtual void deviceInfoModel(BasicStringInterface& str)							;
-	//@} 
+	//@}
 
 	/*!\name DriverInfoInterface Implementation
 	See DriverInfoInterface.*/
-	//@{ 
+	//@{
 	virtual void								driverInfoDetailedInfo(BasicStringInterface& str) const	;
 	virtual double								driverInfoVersion(void) const								;
-	//@} 
+	//@}
 
 	//DomeDriverInterface
 	virtual int dapiGetAzEl(double* pdAz, double* pdEl);
@@ -144,16 +127,16 @@ public:
 
 private:
 
-	SerXInterface 									*	GetSerX() {return m_pSerX; }		
-	TheSkyXFacadeForDriversInterface				*	GetTheSkyXFacadeForDrivers() {return m_pTheSkyXForMounts;}
+	SerXInterface 									*	GetSerX() {return m_pSerX; }
+	TheSkyXFacadeForDriversInterface				*	GetTheSkyXFacadeForDrivers() {return m_pTheSkyX;}
 	SleeperInterface								*	GetSleeper() {return m_pSleeper; }
 	BasicIniUtilInterface							*	GetSimpleIniUtil() {return m_pIniUtil; }
 	LoggerInterface									*	GetLogger() {return m_pLogger; }
 	MutexInterface									*	GetMutex()  {return m_pIOMutex;}
 	TickCountInterface								*	GetTickCountInterface() {return m_pTickCount;}
 
-	SerXInterface									*	m_pSerX;		
-	TheSkyXFacadeForDriversInterface				*	m_pTheSkyXForMounts;
+	SerXInterface									*	m_pSerX;
+	TheSkyXFacadeForDriversInterface				*	m_pTheSkyX;
 	SleeperInterface								*	m_pSleeper;
 	BasicIniUtilInterface							*	m_pIniUtil;
 	LoggerInterface									*	m_pLogger;
@@ -165,8 +148,21 @@ private:
 
 	int         m_nPrivateISIndex;
 	bool        m_bLinked;
-    CRTIRoR     m_RTIRoR;
-    char        m_szLogBuffer[LOG_BUFFER_SIZE];
-    int         m_nBattRequest;
+    CRTIDome    m_RTIDome;
+    bool        m_bHasShutterControl;
+    bool        m_bHomeOnPark;
+    bool        m_bHomeOnUnpark;
+    bool        m_bOpenUpperShutterOnly;
+    bool        m_bCalibratingDome;
 	int			m_nSavedTicksPerRev;
+    int         m_nPanId;
+    bool        m_bSettingPanID;
+    bool        m_bLogRainStatus;
+
+    CStopWatch  m_SetPanIdTimer;
+
+    bool        m_bSettingNetwork;
+    CStopWatch  m_SetNetworkTimer;
+
+    // bool        mIsRollOffRoof;
 };
