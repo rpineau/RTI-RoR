@@ -16,8 +16,10 @@
 #include "../../licensedinterfaces/mutexinterface.h"
 #include "../../licensedinterfaces/tickcountinterface.h"
 #include "../../licensedinterfaces/serialportparams2interface.h"
+#include "../../licensedinterfaces/domehasreliableopenclosesensors.h"
 
-#include "RTI-Dome.h"
+
+#include "rti_ror.h"
 #include "StopWatch.h"
 
 #define PARENT_KEY			        "RTI-Dome"
@@ -42,7 +44,7 @@
 
 Use this example to write an X2Dome driver.
 */
-class X2Dome: public DomeDriverInterface, public SerialPortParams2Interface, public ModalSettingsDialogInterface, public X2GUIEventInterface
+class X2Dome: public DomeDriverInterface, public SerialPortParams2Interface, public ModalSettingsDialogInterface, public X2GUIEventInterface, public DomeHasHighlyRelaibleOpenCloseSensors
 {
 public:
 
@@ -148,13 +150,8 @@ private:
 
 	int         m_nPrivateISIndex;
 	bool        m_bLinked;
-    CRTIDome    m_RTIDome;
-    bool        m_bHasShutterControl;
-    bool        m_bHomeOnPark;
-    bool        m_bHomeOnUnpark;
-    bool        m_bOpenUpperShutterOnly;
-    bool        m_bCalibratingDome;
-	int			m_nSavedTicksPerRev;
+    CRTIRoR     m_RTIRoR;
+    bool        m_bOpenUpperRoofOnly;
     int         m_nPanId;
     bool        m_bSettingPanID;
     bool        m_bLogRainStatus;

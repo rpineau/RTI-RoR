@@ -1,5 +1,7 @@
 //
-// RTI-Zone Roof firmware.
+// RTI-Zone RoR firmware.
+// 
+// Uncomment #define DEBUG in RoofClass.h to enable printing debug messages in serial
 
 #define MAX_TIMEOUT 10
 #define ERR_NO_DATA -1
@@ -9,11 +11,13 @@
 
 #define USE_EXT_EEPROM
 #define USE_ETHERNET
+//#define USE_ALPACA
 
 #ifdef USE_ETHERNET
 #pragma message "Ethernet enabled"
-#define USE_ALPACA
+#ifdef USE_ALPACA
 #pragma message "Alpaca server enabled"
+#endif
 // include and some defines for ethernet connection
 #include <SPI.h>
 #include <Ethernet.h>
@@ -21,6 +25,7 @@
 #endif // USE_ETHERNET
 
 #define Computer Serial2     // USB FTDI
+
 #define FTDI_RESET  23
 #define DebugPort Serial    // programing port
 
@@ -45,12 +50,19 @@ String networkBuffer;
 #endif // USE_ETHERNET
 
 String computerBuffer;
-RoofClass *Roof = NULL;
-static const unsigned long resetInterruptInterval = 43200000; // 12 hours
+
+
 StopWatch ResetInterruptWatchdog;
+static const unsigned long resetInterruptInterval = 43200000; // 12 hours
+
+RoofClass *Roof = NULL;
+
 
 // global variable for rain status
 volatile bool bIsRaining = false;
+// global variable for shutter voltage state
+volatile bool bLowShutterVoltage = false;
+
 
 #ifdef USE_ETHERNET
 // global variable for the IP config and to check if we detect the ethernet card
@@ -58,54 +70,60 @@ bool ethernetPresent;
 IPConfig ServerConfig;
 #endif // USE_ETHERNET
 
-// Rotator commands
+// Roof commands
 const char ABORT_MOVE_CMD               = 'a'; // Tell everything to STOP!
 const char ETH_RECONFIG                 = 'b'; // reconfigure ethernet
-const char CALIBRATE_ROOF_CMD           = 'c'; // Calibrate the roof
+const char CALIBRATE_ROTATOR_CMD        = 'c'; // Calibrate the dome
 const char RESTORE_MOTOR_DEFAULT        = 'd'; // restore default values for motor control.
 const char ETH_MAC_ADDRESS              = 'f'; // get the MAC address.
 const char IP_ADDRESS                   = 'j'; // get/set the IP address
-const char RAIN_ROOF_ACTION             = 'n'; // Get/Set action when rain sensor triggered (do nothing, home, park)
+const char VOLTS_ROTATOR_CMD            = 'k'; // Get volts and get/set cutoff
 const char IP_SUBNET                    = 'p'; // get/set the ip subnet
-const char PANID_GET                    = 'q'; // get and set the XBEE PAN ID
-const char STEPSPER_ROOF_CMD            = 't'; // Get/set Steps per open/close
+const char SPEED_ROTATOR_CMD            = 'r'; // Get/Set step rate (speed)
+const char STEPSPER_ROTATOR_CMD         = 't'; // Get/set Steps per rotation
 const char IP_GATEWAY                   = 'u'; // get/set default gateway IP
-const char VERSION_GET                  = 'v'; // Get Firmware Version
 const char IP_DHCP                      = 'w'; // get/set DHCP mode
-const char REVERSED_ROOF_CMD            = 'y'; // Get/Set stepper reversed status
-const char RAIN_ROOF_GET                = 'F'; // Get rain status (from client) or tell roof it's raining (from Rotator)
-
-const char CLOSE_ROOF_CMD               = 'C'; // Close roof
-const char ACCELERATION_ROOF_CMD        = 'E'; // Get/Set stepper acceleration
-const char HELLO_CMD                    = 'H'; // Let roof know we're here
-const char WATCHDOG_INTERVAL_SET        = 'I'; // Tell roof when to trigger the watchdog for communication loss with rotator
-const char VOLTS_ROOF_CMD               = 'K'; // Get volts and set cutoff voltage (close if bellow)
-const char STATE_ROOF_GET               = 'M'; // Get roof state
-const char OPEN_ROOF_CMD                = 'O'; // Open the roof
+const char RAIN_ROOF_GET             = 'F'; // Get rain status
+// Roof commands
+const char CLOSE_ROOF_CMD            = 'C'; // Close shutter
+const char SHUTTER_RESTORE_MOTOR_DEFAULT= 'D'; // Restore default values for motor control.
+const char ACCELERATION_ROOF_CMD     = 'E'; // Get/Set stepper acceleration
+const char STATE_ROOF_GET            = 'M'; // Get shutter state
+const char OPEN_ROOF_CMD             = 'O'; // Open the shutter
 const char POSITION_ROOF_GET		    = 'P'; // Get step position
-const char SPEED_ROOF_CMD               = 'R'; // Get/Set step rate (speed)
-const char VERSION_ROOF_GET             = 'V'; // Get version string
-
+const char SHUTTER_PANID_GET            = 'Q'; // get and set the XBEE PAN ID
+const char SPEED_ROOF_CMD            = 'R'; // Get/Set step rate (speed)
+const char STEPSPER_ROOF_CMD         = 'T'; // Get/Set steps per stroke
+const char VERSION_ROOF_GET          = 'V'; // Get version string
+const char REVERSED_ROOF_CMD         = 'Y'; // Get/Set stepper reversed status
 
 // function prototypes
-void checkInterruptTimer();
 #ifdef USE_ETHERNET
 void configureEthernet();
 bool initEthernet(bool bUseDHCP, IPAddress ip, IPAddress dns, IPAddress gateway, IPAddress subnet);
 void checkForNewTCPClient();
 #endif // USE_ETHERNET
+void checkInterruptTimer();
 void homeIntHandler();
 void rainIntHandler();
 void buttonHandler();
 void resetChip(int);
 void resetFTDI(int);
+void StartWirelessConfig();
+void ConfigXBee();
+void setPANID(String);
+void SendHello();
+void requestShutterData();
 void CheckForCommands();
 void CheckForRain();
+void PingShutter();
 #ifdef USE_ETHERNET
 void ReceiveNetwork(EthernetClient);
 #endif // USE_ETHERNET
 void ReceiveComputer();
 void ProcessCommand();
+void ReceiveWireless();
+void ProcessWireless();
 
 void setup()
 {
@@ -121,26 +139,29 @@ void setup()
 
 #ifdef DEBUG
     DebugPort.begin(115200);
-    DBPrintln("\n\n========== RTI-Zome controller booting ==========\n\n");
+    DBPrintln("\n\n========== RTI-Zome RoR controller booting ==========\n\n");
 #endif
 #ifdef USE_ETHERNET
     getMacAddress(MAC_Address, uidBuffer);
 #endif // USE_ETHERNET
 
     Computer.begin(115200);
+
     Roof = new RoofClass();
     Roof->motorStop();
     Roof->EnableMotor(false);
+
     noInterrupts();
-    attachInterrupt(digitalPinToInterrupt(HOME_PIN), homeIntHandler, FALLING);
-    attachInterrupt(digitalPinToInterrupt(RAIN_SENSOR_PIN), rainIntHandler, CHANGE);
-    attachInterrupt(digitalPinToInterrupt(BUTTON_CW), buttonHandler, CHANGE);
-    attachInterrupt(digitalPinToInterrupt(BUTTON_CCW), buttonHandler, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(OPENED_PIN), handleOpenInterrupt, FALLING);
+    attachInterrupt(digitalPinToInterrupt(CLOSED_PIN), handleClosedInterrupt, FALLING);
+    attachInterrupt(digitalPinToInterrupt(BUTTON_OPEN), handleButtons, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(BUTTON_CLOSE), handleButtons, CHANGE);
     ResetInterruptWatchdog.reset();
     interrupts();
 #ifdef USE_ETHERNET
     configureEthernet();
 #endif // USE_ETHERNET
+
 }
 
 void loop()
@@ -155,27 +176,6 @@ void loop()
     CheckForCommands();
     CheckForRain();
     checkInterruptTimer();
-}
-
-// reset intterupt as they seem to stop working after a while
-void checkInterruptTimer()
-{
-    if(ResetInterruptWatchdog.elapsed() > resetInterruptInterval ) {
-        if(Roof->GetSeekMode() == HOMING_NONE) { // reset interrupt only if not doing anything
-            noInterrupts();
-            detachInterrupt(digitalPinToInterrupt(HOME_PIN));
-            detachInterrupt(digitalPinToInterrupt(RAIN_SENSOR_PIN));
-            detachInterrupt(digitalPinToInterrupt(BUTTON_CW));
-            detachInterrupt(digitalPinToInterrupt(BUTTON_CCW));
-            // re-attach interrupts
-            attachInterrupt(digitalPinToInterrupt(HOME_PIN), homeIntHandler, FALLING);
-            attachInterrupt(digitalPinToInterrupt(RAIN_SENSOR_PIN), rainIntHandler, CHANGE);
-            attachInterrupt(digitalPinToInterrupt(BUTTON_CW), buttonHandler, CHANGE);
-            attachInterrupt(digitalPinToInterrupt(BUTTON_CCW), buttonHandler, CHANGE);
-            ResetInterruptWatchdog.reset();
-            interrupts();
-        }
-    }
 }
 
 #ifdef USE_ETHERNET
@@ -204,12 +204,15 @@ bool initEthernet(bool bUseDHCP, IPAddress ip, IPAddress dns, IPAddress gateway,
 
     // try DHCP if set
     if(bUseDHCP) {
-        dhcpOk = Ethernet.begin(MAC_Address);
+        dhcpOk = Ethernet.begin(MAC_Address, 10000, 4000); // short timeout
         if(!dhcpOk) {
             DBPrintln("DHCP Failed!");
-            Ethernet.begin(MAC_Address, ip, dns, gateway, subnet);
-        } else {
-
+            if(Ethernet.linkStatus() == LinkON )
+                Ethernet.begin(MAC_Address, ip, dns, gateway, subnet);
+            else {
+                DBPrintln("No cable");
+                return false;
+            }
         }
     }
     else {
@@ -270,10 +273,25 @@ void checkForNewTCPClient()
 }
 #endif // USE_ETHERNET
 
-void homeIntHandler()
+// reset intterupt as they seem to stop working after a while
+void checkInterruptTimer()
 {
-    if(Roof)
-        Roof->homeInterrupt();
+    if(ResetInterruptWatchdog.elapsed() > resetInterruptInterval ) {
+        if(Roof->GetState() == OPEN || Roof->GetState() == CLOSED) { // reset interrupt only if not doing anything
+            noInterrupts();
+            detachInterrupt(digitalPinToInterrupt(OPENED_PIN));
+            detachInterrupt(digitalPinToInterrupt(CLOSED_PIN));
+            detachInterrupt(digitalPinToInterrupt(BUTTON_OPEN));
+            detachInterrupt(digitalPinToInterrupt(BUTTON_CLOSE));
+            // re-attach interrupts
+            attachInterrupt(digitalPinToInterrupt(OPENED_PIN), handleOpenInterrupt, FALLING);
+            attachInterrupt(digitalPinToInterrupt(CLOSED_PIN), handleClosedInterrupt, FALLING);
+            attachInterrupt(digitalPinToInterrupt(BUTTON_OPEN), handleButtons, CHANGE);
+            attachInterrupt(digitalPinToInterrupt(BUTTON_CLOSE), handleButtons, CHANGE);
+            ResetInterruptWatchdog.reset();
+            interrupts();
+        }
+    }
 }
 
 void rainIntHandler()
@@ -282,11 +300,21 @@ void rainIntHandler()
         Roof->rainInterrupt();
 }
 
-void buttonHandler()
+void handleClosedInterrupt()
 {
-    if(Roof)
-        Roof->ButtonCheck();
+    Roof->ClosedInterrupt();
 }
+
+void handleOpenInterrupt()
+{
+    Roof->OpenInterrupt();
+}
+
+void handleButtons()
+{
+    Roof->DoButtons();
+}
+
 
 
 // reset chip with /reset connected to nPin
@@ -324,14 +352,10 @@ void CheckForRain()
         bIsRaining = Roof->GetRainStatus();
     }
     if (bIsRaining) {
-        if (Roof->GetRainAction() == HOME)
-            Roof->StartHoming();
-
-        if (Roof->GetRainAction() == PARK)
-            Roof->GoToAzimuth(Roof->GetParkAzimuth());
+        if (Roof->GetState() == OPEN)
+            Roof->Close();
     }
 }
-
 
 #ifdef USE_ETHERNET
 void ReceiveNetwork(EthernetClient client)
@@ -368,6 +392,10 @@ void ReceiveNetwork(EthernetClient client)
 void ReceiveComputer()
 {
     char computerCharacter;
+
+    if(!Computer)
+        return;
+
     if(Computer.available() < 1)
         return; // no data
 
@@ -428,65 +456,21 @@ void ProcessCommand(bool bFromNetwork)
         case ABORT_MOVE_CMD:
             sTmpString = String(ABORT_MOVE_CMD);
             serialMessage = sTmpString;
-            Roof->Stop();
+            Roof->motorStop();
+            DBPrintln(serialMessage);
             break;
 
-        case ACCELERATION_ROOF_CMD:
+        case VOLTS_ROTATOR_CMD:
             if (hasValue) {
-                Roof->SetAcceleration(value.toInt());
+                Roof->SetVoltsFromString(value);
             }
-            serialMessage = String(ACCELERATION_ROOF_CMD) + String(Roof->GetAcceleration());
-            break;
-
-        case CALIBRATE_ROOF_CMD:
-            Roof->StartCalibrating();
-            serialMessage = String(CALIBRATE_ROOF_CMD);
-            break;
-
-
-        case RAIN_ROOF_ACTION:
-            if (hasValue) {
-                Roof->SetRainAction(value.toInt());
-            }
-            serialMessage = String(RAIN_ROOF_ACTION) + String(Roof->GetRainAction());
-            break;
-
-        case SPEED_ROOF_CMD:
-            if (hasValue)
-                Roof->SetMaxSpeed(value.toInt());
-            serialMessage = String(SPEED_ROOF_CMD) + String(Roof->GetMaxSpeed());
-            break;
-
-        case REVERSED_ROOF_CMD:
-            if (hasValue)
-                Roof->SetReversed(value.toInt());
-            serialMessage = String(REVERSED_ROOF_CMD) + String(Roof->GetReversed());
-            break;
-
-        case RESTORE_MOTOR_DEFAULT:
-            Roof->restoreDefaultMotorSettings();
-            serialMessage = String(RESTORE_MOTOR_DEFAULT);
-            break;
-
-        case STEPSPER_ROOF_CMD:
-            if (hasValue)
-                Roof->SetStepsPerRotation(value.toInt());
-            serialMessage = String(STEPSPER_ROOF_CMD) + String(Roof->GetStepsPerRotation());
-            break;
-
-        case VERSION_GET:
-            serialMessage = String(VERSION_GET) + VERSION;
-            break;
-
-        case VOLTS_ROOF_CMD:
-            if (hasValue) {
-                Roof->SetLowVoltageCutoff(value.toInt());
-            }
-            serialMessage = String(VOLTS_ROOF_CMD) + String(Roof->GetVoltString());
+            serialMessage = String(VOLTS_ROTATOR_CMD) + String(Roof->GetVoltString());
+            DBPrintln(serialMessage);
             break;
 
         case RAIN_ROOF_GET:
             serialMessage = String(RAIN_ROOF_GET) + String(bIsRaining ? "1" : "0");
+            DBPrintln(serialMessage);
             break;
 
 #ifdef USE_ETHERNET
@@ -497,6 +481,7 @@ void ProcessCommand(bool bFromNetwork)
             }
             configureEthernet();
             serialMessage = String(ETH_RECONFIG)  + String(ethernetPresent?"1":"0");
+            DBPrintln(serialMessage);
             break;
 
         case ETH_MAC_ADDRESS:
@@ -510,6 +495,7 @@ void ProcessCommand(bool bFromNetwork)
                     MAC_Address[5]);
 
             serialMessage = String(ETH_MAC_ADDRESS) + String(macBuffer);
+            DBPrintln(serialMessage);
             break;
 
         case IP_DHCP:
@@ -517,6 +503,7 @@ void ProcessCommand(bool bFromNetwork)
                 Roof->setDHCPFlag(value.toInt() == 0 ? false : true);
             }
             serialMessage = String(IP_DHCP) + String( Roof->getDHCPFlag()? "1" : "0");
+            DBPrintln(serialMessage);
             break;
 
         case IP_ADDRESS:
@@ -529,6 +516,7 @@ void ProcessCommand(bool bFromNetwork)
             else {
                 serialMessage = String(IP_ADDRESS) + String(Roof->IpAddress2String(Ethernet.localIP()));
             }
+            DBPrintln(serialMessage);
             break;
 
         case IP_SUBNET:
@@ -541,6 +529,7 @@ void ProcessCommand(bool bFromNetwork)
             else {
                 serialMessage = String(IP_SUBNET) + String(Roof->IpAddress2String(Ethernet.subnetMask()));
             }
+            DBPrintln(serialMessage);
             break;
 
         case IP_GATEWAY:
@@ -553,20 +542,99 @@ void ProcessCommand(bool bFromNetwork)
             else {
                 serialMessage = String(IP_GATEWAY) + String(Roof->IpAddress2String(Ethernet.gatewayIP()));
             }
+            DBPrintln(serialMessage);
             break;
 #endif // USE_ETHERNET
 
+        case ACCELERATION_ROOF_CMD:
+            if (hasValue) {
+                Roof->SetAcceleration(value.toInt());
+            }
+            serialMessage = String(ACCELERATION_ROOF_CMD) + String(Roof->GetAcceleration());
+            DBPrintln(serialMessage);
+            break;
+
+        case CLOSE_ROOF_CMD:
+            if (Roof->GetState() != CLOSED) {
+                Roof->Close();
+            }
+            serialMessage = String(STATE_ROOF_GET) + String(Roof->GetState());
+             DBPrintln(serialMessage);
+           break;
+
+        case SHUTTER_RESTORE_MOTOR_DEFAULT :
+            Roof->restoreDefaultMotorSettings();
+            serialMessage = String(RESTORE_MOTOR_DEFAULT);
+            DBPrintln(serialMessage);
+            break;
+
+        case OPEN_ROOF_CMD:
+            if (bIsRaining) {
+                serialMessage = "OR"; // (O)pen command (R)ain cancel
+            }
+            else if (Roof->GetVoltsAreLow()) {
+                serialMessage = "OL"; // (O)pen command (L)ow voltage cancel
+            }
+            else {
+                serialMessage = String(OPEN_ROOF_CMD); // (O)pen command
+                if (Roof->GetState() != OPEN)
+                    Roof->Open();
+            }
+            DBPrintln(serialMessage);
+            break;
+
+        case REVERSED_ROOF_CMD:
+            if (hasValue) {
+                Roof->SetReversed(value.equals("1"));
+            }
+            serialMessage = String(REVERSED_ROOF_CMD) + String(Roof->GetReversed());
+            DBPrintln(serialMessage);
+            break;
+
+        case SPEED_ROOF_CMD:
+            if (hasValue) {
+                DBPrintln("Set speed to " + value);
+                if (value.toInt() > 0) Roof->SetMaxSpeed(value.toInt());
+            }
+            serialMessage = String(SPEED_ROOF_CMD) + String(Roof->GetMaxSpeed());
+            DBPrintln(serialMessage);
+            break;
+
+        case STATE_ROOF_GET:
+            serialMessage = String(STATE_ROOF_GET) + String(Roof->GetState());
+            DBPrintln(serialMessage);
+            break;
+
+        case STEPSPER_ROOF_CMD:
+            if (hasValue) {
+                if (value.toInt() > 0) {
+                    Roof->SetStepsPerStroke(value.toInt());
+                }
+            }
+            else {
+                DBPrintln("Get Steps " + String(Roof->GetStepsPerStroke()));
+            }
+            serialMessage = String(STEPSPER_ROOF_CMD) + String(Roof->GetStepsPerStroke());
+            DBPrintln(serialMessage);
+            break;
+
+        case VERSION_ROOF_GET:
+            serialMessage = String(VERSION_ROOF_GET) + VERSION;
+            DBPrintln(serialMessage);
+            break;
 
         default:
             serialMessage = "Unknown command:" + String(command);
+            DBPrintln(serialMessage);
             break;
     }
-
+        
 
     // Send messages if they aren't empty.
     if (serialMessage.length() > 0) {
         if(!bFromNetwork) {
-            Computer.print(serialMessage + "#");
+            if(Computer)
+                Computer.print(serialMessage + "#");
             }
 #ifdef USE_ETHERNET
         else if(domeClient.connected()) {
@@ -577,7 +645,6 @@ void ProcessCommand(bool bFromNetwork)
 #endif // USE_ETHERNET
     }
 }
-
 
 
 

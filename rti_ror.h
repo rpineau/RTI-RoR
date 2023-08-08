@@ -1,12 +1,12 @@
 //
-//  RTI-Dome.h
-//  RTI-Dome
+//  RTI-RoR.h
+//  RTI-RoR
 //
 //  Created by Rodolphe Pineau on 2020/10/4.
-//  RTI-Dome X2 plugin
+//  RTI-RoR X2 plugin
 
-#ifndef __RTI_Dome__
-#define __RTI_Dome__
+#ifndef __RTI_RoR__
+#define __RTI_RoR__
 
 // standard C includes
 #include <stdlib.h>
@@ -47,14 +47,14 @@
 #define PANID_TIMEOUT 15    // in seconds
 #define RAIN_CHECK_INTERVAL 10
 
-#define PLUGIN_VERSION      1.26
+#define PLUGIN_VERSION      1.34
 #define PLUGIN_ID   1
 
 // #define PLUGIN_DEBUG 2
 
 // Error code
-enum RTIDomeErrors {PLUGIN_OK=0, NOT_CONNECTED, CANT_CONNECT, BAD_CMD_RESPONSE, COMMAND_FAILED, COMMAND_TIMEOUT, ERR_RAINING, ERR_BATTERY_LOW};
-enum RTIDomeShutterState { OPEN=0 , CLOSED, OPENING, CLOSING, BOTTOM_OPEN, BOTTOM_CLOSED, BOTTOM_OPENING, BOTTOM_CLOSING, SHUTTER_ERROR, FINISHING_OPEN, FINISHING_CLOSE };
+enum RTIRoRErrors {PLUGIN_OK=0, NOT_CONNECTED, CANT_CONNECT, BAD_CMD_RESPONSE, COMMAND_FAILED, COMMAND_TIMEOUT, ERR_RAINING, ERR_BATTERY_LOW};
+enum RTIRoRRoofState { OPEN=0 , CLOSED, OPENING, CLOSING, BOTTOM_OPEN, BOTTOM_CLOSED, BOTTOM_OPENING, BOTTOM_CLOSING, ROOF_ERROR, FINISHING_OPEN, FINISHING_CLOSE };
 
 enum HomeStatuses {NOT_AT_HOME = 0, HOMED, ATHOME};
 enum RainActions {DO_NOTHING=0, HOME, PARK};
@@ -62,11 +62,11 @@ enum MoveDirection {MOVE_NEGATIVE = -1, MOVE_NONE, MOVE_POSITIVE};
 // RG-11
 enum RainSensorStates {RAINING= 0, NOT_RAINING, RAIN_UNKNOWN};
 
-class CRTIDome
+class CRTIRoR
 {
 public:
-    CRTIDome();
-    ~CRTIDome();
+    CRTIRoR();
+    ~CRTIRoR();
 
     int         Connect(const char *pszPort);
     void        Disconnect(void);
@@ -74,82 +74,37 @@ public:
 
     void        setSerxPointer(SerXInterface *p) { m_pSerx = p; }
 
-    // Dome commands
-    int syncDome(double dAz, double dEl);
-    int parkDome(void);
-    int unparkDome(void);
-    int gotoAzimuth(double dNewAz);
-    int openShutter();
-    int closeShutter();
+    // RoR commands
+    int openRoof();
+    int closeRoof();
     int getFirmwareVersion(std::string &sVersion, float &fVersion);
     int getFirmwareVersion(float &fVersion);
-    int getShutterFirmwareVersion(std::string &sVersion, float &fVersion);
-    int goHome();
-    int calibrate();
 
     // command complete functions
-    int isGoToComplete(bool &bComplete);
     int isOpenComplete(bool &bComplete);
     int isCloseComplete(bool &bComplete);
-    int isParkComplete(bool &bComplete);
-    int isUnparkComplete(bool &bComplete);
-    int isFindHomeComplete(bool &bComplete);
-    int isCalibratingComplete(bool &bComplete);
 
     int abortCurrentCommand();
-    int sendShutterHello();
-    int getShutterPresent(bool &bShutterPresent);
-    // getter/setter
-    int getNbTicksPerRev();
-    int setNbTicksPerRev(int nSteps);
 
     int getBatteryLevel();
 
-    double getHomeAz();
-    int setHomeAz(double dAz);
-
-    double getParkAz();
-    int setParkAz(double dAz);
-
-    double getCurrentAz();
-    double getCurrentEl();
-
-    int getBatteryLevels(double &domeVolts, double &dDomeCutOff, double &dShutterVolts, double &dShutterCutOff);
-    int setBatteryCutOff(double dDomeCutOff, double dShutterCutOff);
+    int getBatteryLevels(double &dRoofVolts, double &dRoofCutOff);
+    int setBatteryCutOff(double dRoofCutOff);
 
     int getDefaultDir(bool &bNormal);
     int setDefaultDir(bool bNormal);
 
     int getRainSensorStatus(int &nStatus);
 
-    int getRotationSpeed(int &nSpeed);
-    int setRotationSpeed(int nSpeed);
+    int getRoofSpeed(int &nSpeed);
+    int setRoofSpeed(int nSpeed);
 
-    int getRotationAcceleration(int &nAcceleration);
-    int setRotationAcceleration(int nAcceleration);
+    int getRoofAcceleration(int &nAcceleration);
+    int setRoofAcceleration(int nAcceleration);
 
-    int getShutterSpeed(int &nSpeed);
-    int setShutterSpeed(int nSpeed);
+    void    getRoofStatus(int &nStatus);
 
-    int getShutterAcceleration(int &nAcceleration);
-    int setShutterAcceleration(int nAcceleration);
-
-    void setHomeOnPark(const bool bEnabled);
-    void setHomeOnUnpark(const bool bEnabled);
-
-	int	getSutterWatchdogTimerValue(int &nValue);
-	int	setSutterWatchdogTimerValue(const int &nValue);
-
-    int getRainAction(int &nAction);
-    int setRainAction(const int &nAction);
-
-    int getPanId(int &nPanId);
-    int setPanId(const int nPanId);
-    int getShutterPanId(int &nPanId);
-    int isPanIdSet(const int nPanId, bool &bSet);
-    
-    int restoreDomeMotorSettings();
-    int restoreShutterMotorSettings();
+    int restoreRoofMotorSettings();
     
     void enableRainStatusFile(bool bEnable);
     void getRainStatusFileName(std::string &fName);
@@ -174,61 +129,25 @@ public:
     
 protected:
 
-    int             domeCommand(const std::string sCmd, std::string &sResp, char respCmdCode, int nTimeout = MAX_TIMEOUT);
+    int             roofCommand(const std::string sCmd, std::string &sResp, char respCmdCode, int nTimeout = MAX_TIMEOUT);
     int             readResponse(std::string &sResp, int nTimeout = MAX_TIMEOUT);
 
-    int             getDomeAz(double &dDomeAz);
-    int             getDomeEl(double &dDomeEl);
-    int             getDomeHomeAz(double &dAz);
-    int             getDomeParkAz(double &dAz);
-    int             getShutterState(int &nState);
-    int             getDomeStepPerRev(int &nStepPerRev);
-    int             setDomeStepPerRev(int nStepPerRev);
-
-    bool            isDomeMoving();
-    bool            isDomeAtHome();
+    bool            isRoRMoving();
+    int             getRoofState(int &nState);
     int             parseFields(std::string sResp, std::vector<std::string> &svFields, char cSeparator);
 
-    bool            checkBoundaries(double dGotoAz, double dDomeAz);
-    
     SerXInterface   *m_pSerx;
 
     std::string     m_Port;
     bool            m_bNetworkConnected;
 
     bool            m_bIsConnected;
-    bool            m_bParked;
-    bool            m_bShutterOpened;
-    bool            m_bCalibrating;
-
-    int             m_nNbStepPerRev;
-    double          m_dShutterBatteryVolts;
-    double          m_dHomeAz;
-
-    double          m_dParkAz;
-
-    double          m_dCurrentAzPosition;
-    double          m_dCurrentElPosition;
-
-    double          m_dGotoAz;
-
-
+    bool            m_bRoofOpened;
+    double          m_dRoofBatteryVolts;
     std::string     m_sFirmwareVersion;
     float           m_fVersion;
-    std::string     m_sShutterFirmwareVersion;
-    float           m_fShutterVersion;
-
-    int             m_nShutterState;
-    bool            m_bShutterOnly; // roll off roof so the arduino is running the shutter firmware only.
-    int             m_nHomingTries;
-    int             m_nGotoTries;
-    bool            m_bParking;
-    bool            m_bUnParking;
+    int             m_nRoofState;
     int             m_nIsRaining;
-    bool            m_bHomeOnPark;
-    bool            m_bHomeOnUnpark;
-    bool            m_bShutterPresent;
-
     std::string     m_sRainStatusfilePath;
     std::ofstream   m_RainStatusfile;
     bool            m_bSaveRainStatus;
