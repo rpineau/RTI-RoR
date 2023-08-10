@@ -1,7 +1,7 @@
 #!/bin/bash
 
 PACKAGE_NAME="RTI-RoR_X2.pkg"
-BUNDLE_NAME="org.rti-zone.RTI-RoRX2"
+BUNDLE_NAME="org.rti-zone.RTIRoRX2"
 
 if [ ! -z "$app_id_signature" ]; then
     codesign -f -s "$app_id_signature" --verbose ../build/Release/libRTI-RoR.dylib
@@ -9,7 +9,7 @@ fi
 
 mkdir -p ROOT/tmp/RTI-RoR_X2/
 cp "../RTI-RoR.ui" ROOT/tmp/RTI-RoR_X2/
-cp "../RTI-Zone.png" ROOT/tmp/RTI-RoR_X2/
+cp "../RTI-Zone_2.png" ROOT/tmp/RTI-RoR_X2/
 cp "../domelist RTI-RoR.txt" ROOT/tmp/RTI-RoR_X2/
 cp "../build/Release/libRTI-RoR.dylib" ROOT/tmp/RTI-RoR_X2/
 
