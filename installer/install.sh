@@ -35,14 +35,14 @@ fi
 
 cp "./domelist RTI-RoR.txt" "$TheSkyX_Path/Resources/Common/Miscellaneous Files/"
 cp "./RTI-RoR.ui" "$TheSkyX_Path/Resources/Common/$PLUGINS_DIR/DomePlugIns/"
-cp "./RTI-Zone.png" "$TheSkyX_Path/Resources/Common/$PLUGINS_DIR/DomePlugIns/"
+cp "./RTI-Zone_2.png" "$TheSkyX_Path/Resources/Common/$PLUGINS_DIR/DomePlugIns/"
 cp "./libRTI-RoR.so" "$TheSkyX_Path/Resources/Common/$PLUGINS_DIR/DomePlugIns/"
 
 app_owner=`/usr/bin/stat -c "%u" "$TheSkyX_Path" | xargs id -n -u`
 if [ ! -z "$app_owner" ]; then
 	chown $app_owner "$TheSkyX_Path/Resources/Common/Miscellaneous Files/domelist RTI-RoR.txt"
 	chown $app_owner "$TheSkyX_Path/Resources/Common/$PLUGINS_DIR/DomePlugIns/RTI-RoR.ui"
-	chown $app_owner "$TheSkyX_Path/Resources/Common/$PLUGINS_DIR/DomePlugIns/RTI-Zone.png"
+	chown $app_owner "$TheSkyX_Path/Resources/Common/$PLUGINS_DIR/DomePlugIns/RTI-Zone_2.png"
 	chown $app_owner "$TheSkyX_Path/Resources/Common/$PLUGINS_DIR/DomePlugIns/libRTI-RoR.so"
 fi
 chmod  755 "$TheSkyX_Path/Resources/Common/$PLUGINS_DIR/DomePlugIns/libRTI-RoR.so"
