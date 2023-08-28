@@ -249,11 +249,12 @@ public:
     int         restoreDefaultMotorSettings();
 
     // interrupts
-    void     ClosedInterrupt();
-    void     OpenInterrupt();
+    void        ClosedInterrupt();
+    void        OpenInterrupt();
     volatile bool     m_bButtonUsed;
 
     void        bufferEnable(bool bEnable);
+    void        Abort();
 
 #ifdef USE_ETHERNET
     void        getIpConfig(IPConfig &config);
@@ -696,28 +697,36 @@ int RoofClass::MeasureVoltage()
 // INPUTS
 void RoofClass::DoButtons()
 {
-    int sw1,sw2;
+    int sw1, sw2, sw3, sw4;
+
     sw1 = digitalRead(BUTTON_OPEN);
     sw2 = digitalRead(BUTTON_CLOSE);
+
+    sw3 = digitalRead(CLOSED_PIN);
+    sw4 = digitalRead(OPENED_PIN);
+
     // roof is moving and the user want to stop it in the middle
-    if ((shutterState == OPENING || shutterState == CLOSING) && (sw1 == LOW | sw2== LOW)) {
+    if((sw1 == LOW || sw2== LOW) && sw3 == HIGH && sw4 == HIGH && buttonStopTimer.elapsed() > 1.0 ) {
         motorStop();
         m_bUserButtonStop = true; // this allows us to not try to finish the open/close
         m_bButtonUsed = true;
-    } 
-    else if ((sw1 == LOW) && (GetEndSwitchStatus() != OPEN)) {
+    }
+    else if (sw1 == LOW && sw3 == LOW && sw4 == HIGH) { // button open pressed and we're closed
         shutterState = OPENING;
         MoveRelative(160000000L);
         m_bButtonUsed = true;
         m_bUserButtonStop = false;
+        buttonStopTimer.reset();
     }
-    else if ((sw2 == LOW) && (GetEndSwitchStatus() != CLOSED)) {
+    else if (sw2 == LOW && sw3 == HIGH && sw4 == LOW) { // button close pressed and we're open
         shutterState = CLOSING;
         MoveRelative(-160000000L);
         m_bButtonUsed = true;
         m_bUserButtonStop = false;
+        buttonStopTimer.reset();
     }
     else {
+        buttonStopTimer.reset();
         motorStop();
         m_bButtonUsed = false;
         m_bUserButtonStop = false;
@@ -773,6 +782,12 @@ void RoofClass::bufferEnable(bool bEnable)
         digitalWrite(BUFFERN_EN, 0);
     else
         digitalWrite(BUFFERN_EN, 1);
+}
+
+void RoofClass::Abort()
+{
+    m_bButtonUsed = true; // will stop and not try to finish close/open
+    stepper.stop();
 }
 
 
