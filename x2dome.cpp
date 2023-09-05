@@ -120,8 +120,8 @@ int X2Dome::execModalSettingsDialog()
     double dRoofBattery =0 , dRoofCutOff = 0;
     bool nReverseDir = false;
     int nRainSensorStatus = NOT_RAINING;
-    int nSSpeed = 0;
-    int nSAcc = 0;
+    int nSpeed = 0;
+    int nAcc = 0;
     double  batShutCutOff = 0;
     std::string sDummy;
     bool bUseDHCP = false;
@@ -144,7 +144,6 @@ int X2Dome::execModalSettingsDialog()
     dx->setEnabled("checkBox_3",false);
     dx->setEnabled("comboBox_2",false);
     
-    
     if(m_bLogRainStatus) {
         dx->setChecked("checkBox",true);
         m_RTIRoR.getRainStatusFileName(fName);
@@ -164,27 +163,27 @@ int X2Dome::execModalSettingsDialog()
             dx->setChecked("needReverse",true);
 
         // read values from dome controller
-        dx->setEnabled("shutterSpeed",true);
-        nErr = m_RTIRoR.getRoofSpeed(nSSpeed);
-        dx->setPropertyInt("shutterSpeed","value", nSSpeed);
+        dx->setEnabled("motorSpeed",true);
+        nErr = m_RTIRoR.getRoofSpeed(nSpeed);
+        dx->setPropertyInt("motorSpeed","value", nSpeed);
 
-        dx->setEnabled("shutterAcceleration",true);
-        m_RTIRoR.getRoofAcceleration(nSAcc);
-        dx->setPropertyInt("shutterAcceleration","value", nSAcc);
+        dx->setEnabled("motorAcceleration",true);
+        m_RTIRoR.getRoofAcceleration(nAcc);
+        dx->setPropertyInt("motorAcceleration","value", nAcc);
 
         dx->setEnabled("pushButton_4", true);
 
-        dx->setEnabled("lowShutBatCutOff",true);
+        dx->setEnabled("lowPowerCutOff",true);
 
 
         m_RTIRoR.getBatteryLevels(dRoofBattery, dRoofCutOff);
-        dx->setPropertyDouble("lowShutBatCutOff","value", dRoofCutOff);
+        dx->setPropertyDouble("lowPowerCutOff","value", dRoofCutOff);
         std::stringstream().swap(sTmpBuf);
         if(dRoofBattery>=0.0f)
             sTmpBuf << std::fixed << std::setprecision(2) << dRoofBattery << " V";
         else
             sTmpBuf << "--";
-        dx->setPropertyString("shutterBatteryLevel","text", sTmpBuf.str().c_str());
+        dx->setPropertyString("powerLevel","text", sTmpBuf.str().c_str());
 
         nErr = m_RTIRoR.getRainSensorStatus(nRainSensorStatus);
         if(nErr)
@@ -232,11 +231,10 @@ int X2Dome::execModalSettingsDialog()
     }
     else {
         dx->setEnabled("needReverse", false);
-        dx->setEnabled("shutterSpeed", false);
-        dx->setEnabled("shutterAcceleration", false);
-        dx->setEnabled("lowShutBatCutOff", false);
-        dx->setPropertyString("domeBatteryLevel", "text", "--");
-        dx->setPropertyString("shutterBatteryLevel", "text", "--");
+        dx->setEnabled("motorSpeed", false);
+        dx->setEnabled("motorAcceleration", false);
+        dx->setEnabled("lowPowerCutOff", false);
+        dx->setPropertyString("powerLevel", "text", "--");
         dx->setEnabled("pushButton_2", false);
         dx->setEnabled("pushButton", false);
         dx->setEnabled("pushButton_3", false);
@@ -260,17 +258,17 @@ int X2Dome::execModalSettingsDialog()
 
     //Retreive values from the user interface
     if (bPressedOK) {
-        dx->propertyInt("shutterSpeed", "value", nSSpeed);
-        dx->propertyInt("shutterAcceleration", "value", nSAcc);
-        dx->propertyDouble("lowShutBatCutOff", "value", batShutCutOff);
+        dx->propertyInt("motorSpeed", "value", nSpeed);
+        dx->propertyInt("motorAcceleration", "value", nAcc);
+        dx->propertyDouble("lowPowerCutOff", "value", batShutCutOff);
         nReverseDir = dx->isChecked("needReverse");
         m_bLogRainStatus = dx->isChecked("checkBox");
         m_RTIRoR.enableRainStatusFile(m_bLogRainStatus);
 
         if(m_bLinked) {
             m_RTIRoR.setDefaultDir(!nReverseDir);
-            m_RTIRoR.setRoofSpeed(nSSpeed);
-            m_RTIRoR.setRoofAcceleration(nSAcc);
+            m_RTIRoR.setRoofSpeed(nSpeed);
+            m_RTIRoR.setRoofAcceleration(nAcc);
         }
 
         // save the values to persistent storage
@@ -300,22 +298,21 @@ void X2Dome::uiEvent(X2GUIExchangeInterface* uiex, const char* pszEvent)
     if (!strcmp(pszEvent, "on_timer"))
     {
             if( m_bLinked) {
-                uiex->setEnabled("shutterSpeed",true);
+                uiex->setEnabled("motorSpeed",true);
                 m_RTIRoR.getRoofSpeed(nSpeed);
-                uiex->setPropertyInt("shutterSpeed","value", nSpeed);
+                uiex->setPropertyInt("motorSpeed","value", nSpeed);
 
-                uiex->setEnabled("shutterAcceleration",true);
+                uiex->setEnabled("motorAcceleration",true);
                 m_RTIRoR.getRoofAcceleration(nAcc);
-                uiex->setPropertyInt("shutterAcceleration","value", nAcc);
+                uiex->setPropertyInt("motorAcceleration","value", nAcc);
 
                 uiex->setEnabled("pushButton_4", true);
             }
             else {
-                uiex->setPropertyInt("shutterSpeed","value", 0);
-                uiex->setPropertyInt("shutterAcceleration","value", 0);
-                uiex->setPropertyInt("shutterWatchdog", "value", 0);
-                uiex->setEnabled("shutterSpeed",false);
-                uiex->setEnabled("shutterAcceleration",false);
+                uiex->setPropertyInt("motorSpeed","value", 0);
+                uiex->setPropertyInt("motorAcceleration","value", 0);
+                uiex->setEnabled("motorSpeed",false);
+                uiex->setEnabled("motorAcceleration",false);
                 uiex->setEnabled("pushButton_4", false);
             }
 
@@ -348,10 +345,10 @@ void X2Dome::uiEvent(X2GUIExchangeInterface* uiex, const char* pszEvent)
         m_RTIRoR.restoreRoofMotorSettings();
         // read values from dome controller
         m_RTIRoR.getRoofSpeed(nSpeed);
-        uiex->setPropertyInt("shutterSpeed","value", nSpeed);
+        uiex->setPropertyInt("motorSpeed","value", nSpeed);
 
         m_RTIRoR.getRoofAcceleration(nAcc);
-        uiex->setPropertyInt("shutterAcceleration","value", nAcc);
+        uiex->setPropertyInt("motorAcceleration","value", nAcc);
     }
 
     else if (!strcmp(pszEvent, "on_checkBox_stateChanged"))
@@ -404,7 +401,7 @@ void X2Dome::uiEvent(X2GUIExchangeInterface* uiex, const char* pszEvent)
             sTmpBuf << std::fixed << std::setprecision(2) << dRoofBattery << " V";
         else
             sTmpBuf << "--";
-        uiex->setPropertyString("shutterBatteryLevel","text", sTmpBuf.str().c_str());
+        uiex->setPropertyString("powerLevel","text", sTmpBuf.str().c_str());
         nErr = m_RTIRoR.getRainSensorStatus(nRainSensorStatus);
         if(nErr)
             uiex->setPropertyString("rainStatus","text", "--");

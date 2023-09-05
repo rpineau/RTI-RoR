@@ -149,13 +149,13 @@
         </rect>
        </property>
        <property name="text">
-        <string>Shutter voltage cutoff :</string>
+        <string>voltage cutoff :</string>
        </property>
        <property name="alignment">
         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
        </property>
       </widget>
-      <widget class="QDoubleSpinBox" name="lowShutBatCutOff">
+      <widget class="QDoubleSpinBox" name="lowPowerCutOff">
        <property name="geometry">
         <rect>
          <x>216</x>
@@ -171,7 +171,7 @@
         <double>11.000000000000000</double>
        </property>
       </widget>
-      <widget class="QSpinBox" name="shutterAcceleration">
+      <widget class="QSpinBox" name="motorAcceleration">
        <property name="geometry">
         <rect>
          <x>216</x>
@@ -197,7 +197,7 @@
         </rect>
        </property>
        <property name="text">
-        <string>Shutter acceleration (step/s²) :</string>
+        <string>Motor acceleration (step/s²) :</string>
        </property>
        <property name="alignment">
         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -213,13 +213,13 @@
         </rect>
        </property>
        <property name="text">
-        <string>Shutter speed (step/s) :</string>
+        <string>Motor speed (step/s) :</string>
        </property>
        <property name="alignment">
         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
        </property>
       </widget>
-      <widget class="QSpinBox" name="shutterSpeed">
+      <widget class="QSpinBox" name="motorSpeed">
        <property name="geometry">
         <rect>
          <x>216</x>
@@ -245,7 +245,7 @@
         </rect>
        </property>
        <property name="text">
-        <string>Restore shutter motor default settings</string>
+        <string>Restore motor default settings</string>
        </property>
       </widget>
      </widget>
@@ -325,7 +325,7 @@
         <string>Ok</string>
        </property>
       </widget>
-      <widget class="QLabel" name="shutterBatteryLevel">
+      <widget class="QLabel" name="powerLevel">
        <property name="geometry">
         <rect>
          <x>176</x>
@@ -364,7 +364,7 @@
         </rect>
        </property>
        <property name="text">
-        <string>Roof voltage level :</string>
+        <string>Voltage level :</string>
        </property>
        <property name="alignment">
         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
