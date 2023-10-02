@@ -50,7 +50,38 @@
 #define PLUGIN_VERSION      1.34
 #define PLUGIN_ID   1
 
-// #define PLUGIN_DEBUG 2
+#define PLUGIN_DEBUG 2
+
+
+// Roof commands
+const char ABORT_MOVE_CMD               = 'a'; // Tell everything to STOP!
+const char ETH_RECONFIG                 = 'b'; // reconfigure ethernet
+const char CALIBRATE_ROTATOR_CMD        = 'c'; // Calibrate the dome
+const char RESTORE_MOTOR_DEFAULT        = 'd'; // restore default values for motor control.
+const char ETH_MAC_ADDRESS              = 'f'; // get the MAC address.
+const char IP_ADDRESS                   = 'j'; // get/set the IP address
+const char VOLTS_ROTATOR_CMD            = 'k'; // Get volts and get/set cutoff
+const char IP_SUBNET                    = 'p'; // get/set the ip subnet
+const char SPEED_ROTATOR_CMD            = 'r'; // Get/Set step rate (speed)
+const char STEPSPER_ROTATOR_CMD         = 't'; // Get/set Steps per rotation
+const char IP_GATEWAY                   = 'u'; // get/set default gateway IP
+const char IP_DHCP                      = 'w'; // get/set DHCP mode
+const char RAIN_ROOF_GET             = 'F'; // Get rain status
+// Roof commands
+const char CLOSE_ROOF_CMD            = 'C'; // Close shutter
+const char SHUTTER_RESTORE_MOTOR_DEFAULT= 'D'; // Restore default values for motor control.
+const char ACCELERATION_ROOF_CMD     = 'E'; // Get/Set stepper acceleration
+const char OPEN_ROOF_ORDER           = 'G'; // set the sequencing order for roof/south wall opening
+const char STATE_ROOF_GET            = 'M'; // Get shutter state
+const char OPEN_ROOF_CMD             = 'O'; // Open the shutter
+const char POSITION_ROOF_GET            = 'P'; // Get step position
+const char SHUTTER_PANID_GET            = 'Q'; // get and set the XBEE PAN ID
+const char SPEED_ROOF_CMD            = 'R'; // Get/Set step rate (speed)
+const char STEPSPER_ROOF_CMD         = 'T'; // Get/Set steps per stroke
+const char VERSION_ROOF_GET          = 'V'; // Get version string
+const char REVERSED_ROOF_CMD         = 'Y'; // Get/Set stepper reversed status
+const char SOUTH_WALL_PRESENT        =  'Z'; // enable/disable south wall operations
+
 
 // Error code
 enum RTIRoRErrors {PLUGIN_OK=0, NOT_CONNECTED, CANT_CONNECT, BAD_CMD_RESPONSE, COMMAND_FAILED, COMMAND_TIMEOUT, ERR_RAINING, ERR_BATTERY_LOW};
@@ -87,6 +118,12 @@ public:
     int abortCurrentCommand();
 
     int getBatteryLevel();
+
+    int  getSouthWallPeesent(bool &bPresent);
+    int  setSouthWallPeesent(bool bPresent);
+
+    int  getRoofOpenOrder(bool &bRoofFirst);
+    int  setRoofOpenOrder(bool bRoofFirst);
 
     int getBatteryLevels(double &dRoofVolts, double &dRoofCutOff);
     int setBatteryCutOff(double dRoofCutOff);
@@ -140,7 +177,9 @@ protected:
 
     std::string     m_Port;
     bool            m_bNetworkConnected;
-
+    bool            m_bSouthWallPresent;
+    
+    bool            m_bOpenRoofFirst;
     bool            m_bIsConnected;
     bool            m_bRoofOpened;
     double          m_dRoofBatteryVolts;

@@ -12,6 +12,7 @@ CRTIRoR::CRTIRoR()
     // set some sane values
     m_pSerx = NULL;
     m_bIsConnected = false;
+    m_bOpenRoofFirst = false;
     m_dRoofBatteryVolts = 0.0;
     m_bRoofOpened = false;
     m_fVersion = 0.0;
@@ -423,6 +424,114 @@ int CRTIRoR::setBatteryCutOff(double dRoofCutOff)
     return nErr;
 }
 
+int CRTIRoR::getSouthWallPeesent(bool &bPresent)
+{
+    int nErr = PLUGIN_OK;
+    std::string sResp;
+
+    nErr = roofCommand("Z#", sResp, 'Z');
+    if(nErr) {
+        return nErr;
+    }
+    try {
+        bPresent = std::stoi(sResp) ? false:true;
+    }
+    catch(const std::exception& e) {
+#if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 2
+        m_sLogFile << "["<<getTimeStamp()<<"]"<< " [getSouthWallPeesent] conversion exception = " << e.what() << std::endl;
+        m_sLogFile.flush();
+#endif
+        bPresent = false;
+    }
+
+#if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 2
+    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [getSouthWallPeesent] bPresent = " << (bPresent?"True":"False") << std::endl;
+    m_sLogFile.flush();
+#endif
+    
+    m_bSouthWallPresent = bPresent;
+
+    return nErr;
+
+}
+
+int CRTIRoR::setSouthWallPeesent(bool bPresent)
+{
+    int nErr = PLUGIN_OK;
+    std::string sResp;
+    std::stringstream ssTmp;
+
+    if(!m_bIsConnected)
+        return NOT_CONNECTED;
+
+    // Roof
+    std::stringstream().swap(ssTmp);
+    ssTmp << "Z" << (bPresent?"1":"0") <<"#";
+    nErr = roofCommand(ssTmp.str(), sResp, 'Z');
+    if(nErr) {
+#if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 2
+        m_sLogFile << "["<<getTimeStamp()<<"]"<< " [setSouthWallPeesent] bPresent ERROR = " << sResp << std::endl;
+        m_sLogFile.flush();
+#endif
+        return nErr;
+    }
+    m_bSouthWallPresent = bPresent;
+    return nErr;}
+
+
+int CRTIRoR::getRoofOpenOrder(bool &bRoofFirst)
+{
+    int nErr = PLUGIN_OK;
+    std::string sResp;
+
+    nErr = roofCommand("G#", sResp, 'G');
+    if(nErr) {
+        return nErr;
+    }
+    try {
+        bRoofFirst = std::stoi(sResp) ? false:true;
+    }
+    catch(const std::exception& e) {
+#if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 2
+        m_sLogFile << "["<<getTimeStamp()<<"]"<< " [getRoofOpenOrder] conversion exception = " << e.what() << std::endl;
+        m_sLogFile.flush();
+#endif
+        bRoofFirst = true;
+    }
+
+#if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 2
+    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [getRoofOpenOrder] bRoofFirst = " << (bRoofFirst?"True":"False") << std::endl;
+    m_sLogFile.flush();
+#endif
+
+    return nErr;
+}
+
+int CRTIRoR::setRoofOpenOrder(bool bRoofFirst)
+{
+    int nErr = PLUGIN_OK;
+    std::string sResp;
+    std::stringstream ssTmp;
+
+    if(!m_bIsConnected)
+        return NOT_CONNECTED;
+
+    // Roof
+    std::stringstream().swap(ssTmp);
+    ssTmp << "G" << (bRoofFirst?"1":"0") <<"#";
+    nErr = roofCommand(ssTmp.str(), sResp, 'G');
+    if(nErr) {
+#if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 2
+        m_sLogFile << "["<<getTimeStamp()<<"]"<< " [setRoofOpenOrder] m_bOpenRoofFirst ERROR = " << sResp << std::endl;
+        m_sLogFile.flush();
+#endif
+        return nErr;
+    }
+    m_bOpenRoofFirst = bRoofFirst;
+    return nErr;
+}
+
+
 bool CRTIRoR::isRoRMoving()
 {
     bool bIsMoving;
@@ -675,11 +784,12 @@ int CRTIRoR::abortCurrentCommand()
 {
     int nErr = PLUGIN_OK;
     std::string sResp;
-
+    std::stringstream ssCdm;
+    
     if(!m_bIsConnected)
         return NOT_CONNECTED;
-
-    nErr = roofCommand("a#", sResp, 'a');
+    ssCdm << ABORT_MOVE_CMD << "#";
+    nErr = roofCommand( ssCdm.str(), sResp, ABORT_MOVE_CMD);
 
     return nErr;
 }

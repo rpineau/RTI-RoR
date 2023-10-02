@@ -1,7 +1,22 @@
 //
 // RTI-Zone RoR firmware.
 // 
-// Uncomment #define DEBUG in RoofClass.h to enable printing debug messages in serial
+
+// Debug printing, uncomment #define DEBUG to enable
+#define DEBUG
+#ifdef DEBUG
+#pragma message "Debug messages enabled"
+#define DebugPort Serial    // Programming port
+#define DBPrint(x) if(DebugPort) DebugPort.print(x)
+#define DBPrintln(x) if(DebugPort) DebugPort.println(x)
+#define DBPrintHex(x) if(DebugPort) DebugPort.print(x, HEX)
+#else
+#pragma message "Debug messages disabled"
+#define DBPrint(x)
+#define DBPrintln(x)
+#define DBPrintHex(x)
+#endif // DEBUG
+
 
 #define MAX_TIMEOUT 10
 #define ERR_NO_DATA -1
@@ -24,16 +39,16 @@
 #include "EtherMac.h"
 #endif // USE_ETHERNET
 
+#pragma message "RP2040 Serial2"
 #define Computer Serial2     // USB FTDI
 
-#define FTDI_RESET  23
-#define DebugPort Serial    // programing port
+#define FTDI_RESET  28
 
 #include "RoofClass.h"
 
 #ifdef USE_ETHERNET
-#define ETHERNET_CS     52
-#define ETHERNET_RESET  53
+#define ETHERNET_CS     17
+#define ETHERNET_RESET  20
 uint32_t uidBuffer[4];  // DUE unique ID
 byte MAC_Address[6];    // Mac address, uses part of the unique ID
 
@@ -50,13 +65,11 @@ String networkBuffer;
 #endif // USE_ETHERNET
 
 String computerBuffer;
+volatile bool core0Ready = false;
 
-
-StopWatch ResetInterruptWatchdog;
-static const unsigned long resetInterruptInterval = 43200000; // 12 hours
+bool bParked = false; // use to the rin check doesn't continuously try to park/close
 
 RoofClass *Roof = NULL;
-
 
 // global variable for rain status
 volatile bool bIsRaining = false;
@@ -88,6 +101,7 @@ const char RAIN_ROOF_GET             = 'F'; // Get rain status
 const char CLOSE_ROOF_CMD            = 'C'; // Close shutter
 const char SHUTTER_RESTORE_MOTOR_DEFAULT= 'D'; // Restore default values for motor control.
 const char ACCELERATION_ROOF_CMD     = 'E'; // Get/Set stepper acceleration
+const char OPEN_ROOF_ORDER           = 'G'; // set the sequencing order for roof/south wall opening
 const char STATE_ROOF_GET            = 'M'; // Get shutter state
 const char OPEN_ROOF_CMD             = 'O'; // Open the shutter
 const char POSITION_ROOF_GET		    = 'P'; // Get step position
@@ -96,6 +110,7 @@ const char SPEED_ROOF_CMD            = 'R'; // Get/Set step rate (speed)
 const char STEPSPER_ROOF_CMD         = 'T'; // Get/Set steps per stroke
 const char VERSION_ROOF_GET          = 'V'; // Get version string
 const char REVERSED_ROOF_CMD         = 'Y'; // Get/Set stepper reversed status
+const char SOUTH_WALL_PRESENT        =  'Z'; // enable/disable south wall operations
 
 // function prototypes
 #ifdef USE_ETHERNET
@@ -104,16 +119,10 @@ bool initEthernet(bool bUseDHCP, IPAddress ip, IPAddress dns, IPAddress gateway,
 void checkForNewTCPClient();
 #endif // USE_ETHERNET
 void checkInterruptTimer();
-void homeIntHandler();
 void rainIntHandler();
 void buttonHandler();
 void resetChip(int);
 void resetFTDI(int);
-void StartWirelessConfig();
-void ConfigXBee();
-void setPANID(String);
-void SendHello();
-void requestShutterData();
 void CheckForCommands();
 void CheckForRain();
 void PingShutter();
@@ -122,11 +131,11 @@ void ReceiveNetwork(EthernetClient);
 #endif // USE_ETHERNET
 void ReceiveComputer();
 void ProcessCommand();
-void ReceiveWireless();
-void ProcessWireless();
 
 void setup()
 {
+    core0Ready = false;
+
     digitalWrite(FTDI_RESET, 0);
     pinMode(FTDI_RESET, OUTPUT);
 
@@ -143,6 +152,14 @@ void setup()
 #endif
 #ifdef USE_ETHERNET
     getMacAddress(MAC_Address, uidBuffer);
+#ifdef DEBUG
+    DBPrintln("MAC : " + String(MAC_Address[0], HEX) + String(":") +
+                    String(MAC_Address[1], HEX) + String(":") +
+                    String(MAC_Address[2], HEX) + String(":") +
+                    String(MAC_Address[3], HEX) + String(":") +
+                    String(MAC_Address[4], HEX) + String(":") +
+                    String(MAC_Address[5], HEX) );
+#endif
 #endif // USE_ETHERNET
 
     Computer.begin(115200);
@@ -151,17 +168,26 @@ void setup()
     Roof->motorStop();
     Roof->EnableMotor(false);
 
-    noInterrupts();
-    attachInterrupt(digitalPinToInterrupt(OPENED_PIN), handleOpenInterrupt, FALLING);
-    attachInterrupt(digitalPinToInterrupt(CLOSED_PIN), handleClosedInterrupt, FALLING);
-    attachInterrupt(digitalPinToInterrupt(BUTTON_OPEN), handleButtons, CHANGE);
-    attachInterrupt(digitalPinToInterrupt(BUTTON_CLOSE), handleButtons, CHANGE);
-    ResetInterruptWatchdog.reset();
-    interrupts();
 #ifdef USE_ETHERNET
     configureEthernet();
 #endif // USE_ETHERNET
+    core0Ready = true;
+    DBPrintln("========== Core 0 ready ==========");
+}
 
+void setup1()
+{
+    while(!core0Ready)
+        delay(100);
+
+    DBPrintln("========== Core 1 starting ==========");
+
+    DBPrintln("========== Core 1 Attaching interrupt handler ==========");
+    attachInterrupt(digitalPinToInterrupt(RAIN_SENSOR_PIN), rainIntHandler, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(BUTTON_OPEN), buttonHandler, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(BUTTON_CLOSE), buttonHandler, CHANGE);
+
+    DBPrintln("========== Core 1 ready ==========");
 }
 
 void loop()
@@ -175,7 +201,11 @@ void loop()
     Roof->Run();
     CheckForCommands();
     CheckForRain();
-    checkInterruptTimer();
+}
+
+void loop1()
+{   // all stepper motor code runs on core 1
+    Roof->Run();
 }
 
 #ifdef USE_ETHERNET
@@ -273,49 +303,23 @@ void checkForNewTCPClient()
 }
 #endif // USE_ETHERNET
 
-// reset intterupt as they seem to stop working after a while
-void checkInterruptTimer()
-{
-    if(ResetInterruptWatchdog.elapsed() > resetInterruptInterval ) {
-        if(Roof->GetState() == OPEN || Roof->GetState() == CLOSED) { // reset interrupt only if not doing anything
-            noInterrupts();
-            detachInterrupt(digitalPinToInterrupt(OPENED_PIN));
-            detachInterrupt(digitalPinToInterrupt(CLOSED_PIN));
-            detachInterrupt(digitalPinToInterrupt(BUTTON_OPEN));
-            detachInterrupt(digitalPinToInterrupt(BUTTON_CLOSE));
-            // re-attach interrupts
-            attachInterrupt(digitalPinToInterrupt(OPENED_PIN), handleOpenInterrupt, FALLING);
-            attachInterrupt(digitalPinToInterrupt(CLOSED_PIN), handleClosedInterrupt, FALLING);
-            attachInterrupt(digitalPinToInterrupt(BUTTON_OPEN), handleButtons, CHANGE);
-            attachInterrupt(digitalPinToInterrupt(BUTTON_CLOSE), handleButtons, CHANGE);
-            ResetInterruptWatchdog.reset();
-            interrupts();
-        }
-    }
-}
-
 void rainIntHandler()
 {
     if(Roof)
-        Roof->rainInterrupt();
+      Roof->rainInterrupt();
 }
 
 void handleClosedInterrupt()
 {
-    Roof->ClosedInterrupt();
+    if(Roof)
+      Roof->ClosedInterrupt();
 }
 
-void handleOpenInterrupt()
+void buttonHandler()
 {
-    Roof->OpenInterrupt();
+    if(Roof)
+      Roof->DoButtons();
 }
-
-void handleButtons()
-{
-    Roof->DoButtons();
-}
-
-
 
 // reset chip with /reset connected to nPin
 void resetChip(int nPin)

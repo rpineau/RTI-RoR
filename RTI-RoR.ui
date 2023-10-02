@@ -58,11 +58,11 @@
         <x>16</x>
         <y>104</y>
         <width>296</width>
-        <height>136</height>
+        <height>152</height>
        </rect>
       </property>
       <property name="title">
-       <string>Dome parameters</string>
+       <string>Roof parameters</string>
       </property>
       <widget class="QCheckBox" name="needReverse">
        <property name="geometry">
@@ -87,13 +87,13 @@
         </rect>
        </property>
        <property name="text">
-        <string>Double shutter system (drop out + upper)</string>
+        <string>Roof with south wall drop off</string>
        </property>
       </widget>
       <widget class="QComboBox" name="comboBox_2">
        <property name="geometry">
         <rect>
-         <x>144</x>
+         <x>112</x>
          <y>88</y>
          <width>144</width>
          <height>24</height>
@@ -101,29 +101,45 @@
        </property>
        <item>
         <property name="text">
-         <string>Top shutter first</string>
+         <string>Roof first</string>
         </property>
        </item>
        <item>
         <property name="text">
-         <string>Drop out first</string>
+         <string>South  wall first</string>
         </property>
        </item>
       </widget>
       <widget class="QLabel" name="label_18">
        <property name="geometry">
         <rect>
-         <x>8</x>
+         <x>0</x>
          <y>85</y>
-         <width>128</width>
+         <width>96</width>
          <height>24</height>
         </rect>
        </property>
        <property name="text">
-        <string>Shutter open order :</string>
+        <string>Open order :</string>
        </property>
        <property name="alignment">
         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
+      </widget>
+      <widget class="QLabel" name="label">
+       <property name="geometry">
+        <rect>
+         <x>32</x>
+         <y>120</y>
+         <width>248</width>
+         <height>16</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Close will be done in the reverse  order</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
        </property>
       </widget>
      </widget>
@@ -304,7 +320,7 @@
       <property name="geometry">
        <rect>
         <x>336</x>
-        <y>304</y>
+        <y>320</y>
         <width>336</width>
         <height>152</height>
        </rect>
@@ -404,7 +420,7 @@
       <property name="geometry">
        <rect>
         <x>16</x>
-        <y>248</y>
+        <y>264</y>
         <width>296</width>
         <height>208</height>
        </rect>
