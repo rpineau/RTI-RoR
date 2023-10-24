@@ -91,6 +91,7 @@ const char RESTORE_MOTOR_DEFAULT        = 'd'; // restore default values for mot
 const char ETH_MAC_ADDRESS              = 'f'; // get the MAC address.
 const char IP_ADDRESS                   = 'j'; // get/set the IP address
 const char VOLTS_ROTATOR_CMD            = 'k'; // Get volts and get/set cutoff
+const char SLEW_STATUS_GET             = 'm'; // Get Slewing status/direction
 const char IP_SUBNET                    = 'p'; // get/set the ip subnet
 const char SPEED_ROTATOR_CMD            = 'r'; // Get/Set step rate (speed)
 const char STEPSPER_ROTATOR_CMD         = 't'; // Get/set Steps per rotation
@@ -570,6 +571,10 @@ void ProcessCommand(bool bFromNetwork)
             Roof->restoreDefaultMotorSettings();
             serialMessage = String(RESTORE_MOTOR_DEFAULT);
             DBPrintln(serialMessage);
+            break;
+
+        case SLEW_ROTATOR_GET:
+            serialMessage = String(SLEW_ROTATOR_GET) + String(Rotator->GetDirection());
             break;
 
         case OPEN_ROOF_CMD:

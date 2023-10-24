@@ -304,13 +304,16 @@ int CRTIRoR::readResponse(std::string &sResp, int nTimeout)
 int CRTIRoR::getRoofState(int &nState)
 {
     int nErr = PLUGIN_OK;
+    std::stringstream ssCmd;
     std::string sResp;
     std::vector<std::string> shutterStateFileds;
 
     if(!m_bIsConnected)
         return NOT_CONNECTED;
 
-    nErr = roofCommand("M#", sResp, 'M');
+    ssCmd << STATE_ROOF_GET << '#';
+    nErr = roofCommand(ssCmd.str(), sResp, STATE_ROOF_GET);
+
     if(nErr) {
 #if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 2
         m_sLogFile << "["<<getTimeStamp()<<"]"<< " [getRoofState] ERROR = " << sResp << std::endl;
@@ -349,6 +352,7 @@ int CRTIRoR::getBatteryLevels(double &dRoofVolts, double &dRoofCutOff)
     int nErr = PLUGIN_OK;
     std::string sResp;
     std::vector<std::string> voltsFields;
+    std::stringstream ssCmd;
 
     if(!m_bIsConnected)
         return NOT_CONNECTED;
@@ -356,7 +360,9 @@ int CRTIRoR::getBatteryLevels(double &dRoofVolts, double &dRoofCutOff)
     dRoofVolts  = 0;
     dRoofCutOff = 0;
 
-    nErr = roofCommand("K#", sResp, 'K');
+    ssCmd << VOLTS_ROTATOR_CMD << '#';
+    nErr = roofCommand(ssCmd.str(), sResp, VOLTS_ROTATOR_CMD);
+
     if(nErr) {
 #if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 2
         m_sLogFile << "["<<getTimeStamp()<<"]"<< " [getBatteryLevels] ERROR = " << sResp << std::endl;
@@ -401,8 +407,8 @@ int CRTIRoR::getBatteryLevels(double &dRoofVolts, double &dRoofCutOff)
 int CRTIRoR::setBatteryCutOff(double dRoofCutOff)
 {
     int nErr = PLUGIN_OK;
+    std::stringstream ssCmd;
     std::string sResp;
-    std::stringstream ssTmp;
     int nRoofCutOff;
 
     if(!m_bIsConnected)
@@ -410,10 +416,9 @@ int CRTIRoR::setBatteryCutOff(double dRoofCutOff)
 
     nRoofCutOff = dRoofCutOff * 100.0;
 
-    // Roof
-    std::stringstream().swap(ssTmp);
-    ssTmp << "k" << nRoofCutOff <<"#";
-    nErr = roofCommand(ssTmp.str(), sResp, 'K');
+    ssCmd << VOLTS_ROTATOR_CMD << nRoofCutOff <<"#";
+    nErr = roofCommand(ssCmd.str(), sResp, VOLTS_ROTATOR_CMD);
+
     if(nErr) {
 #if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 2
         m_sLogFile << "["<<getTimeStamp()<<"]"<< " [setBatteryCutOff] dRoofCutOff ERROR = " << sResp << std::endl;
@@ -424,12 +429,15 @@ int CRTIRoR::setBatteryCutOff(double dRoofCutOff)
     return nErr;
 }
 
-int CRTIRoR::getSouthWallPeesent(bool &bPresent)
+int CRTIRoR::getSouthWallPresent(bool &bPresent)
 {
     int nErr = PLUGIN_OK;
+    std::stringstream ssCmd;
     std::string sResp;
 
-    nErr = roofCommand("Z#", sResp, 'Z');
+    ssCmd << SOUTH_WALL_PRESENT << '#';
+    nErr = roofCommand(ssCmd.str(), sResp, SOUTH_WALL_PRESENT);
+
     if(nErr) {
         return nErr;
     }
@@ -455,19 +463,18 @@ int CRTIRoR::getSouthWallPeesent(bool &bPresent)
 
 }
 
-int CRTIRoR::setSouthWallPeesent(bool bPresent)
+int CRTIRoR::setSouthWallPresent(bool bPresent)
 {
     int nErr = PLUGIN_OK;
+    std::stringstream ssCmd;
     std::string sResp;
-    std::stringstream ssTmp;
 
     if(!m_bIsConnected)
         return NOT_CONNECTED;
 
-    // Roof
-    std::stringstream().swap(ssTmp);
-    ssTmp << "Z" << (bPresent?"1":"0") <<"#";
-    nErr = roofCommand(ssTmp.str(), sResp, 'Z');
+    ssCmd <<SOUTH_WALL_PRESENT << (bPresent?"1":"0") <<"#";
+    nErr = roofCommand(ssCmd.str(), sResp, SOUTH_WALL_PRESENT);
+
     if(nErr) {
 #if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 2
         m_sLogFile << "["<<getTimeStamp()<<"]"<< " [setSouthWallPeesent] bPresent ERROR = " << sResp << std::endl;
@@ -482,9 +489,12 @@ int CRTIRoR::setSouthWallPeesent(bool bPresent)
 int CRTIRoR::getRoofOpenOrder(bool &bRoofFirst)
 {
     int nErr = PLUGIN_OK;
+    std::stringstream ssCmd;
     std::string sResp;
 
-    nErr = roofCommand("G#", sResp, 'G');
+    ssCmd << OPEN_ROOF_ORDER  <<"#";
+    nErr = roofCommand(ssCmd.str(), sResp, OPEN_ROOF_ORDER);
+
     if(nErr) {
         return nErr;
     }
@@ -510,16 +520,15 @@ int CRTIRoR::getRoofOpenOrder(bool &bRoofFirst)
 int CRTIRoR::setRoofOpenOrder(bool bRoofFirst)
 {
     int nErr = PLUGIN_OK;
+    std::stringstream ssCmd;
     std::string sResp;
-    std::stringstream ssTmp;
 
     if(!m_bIsConnected)
         return NOT_CONNECTED;
 
-    // Roof
-    std::stringstream().swap(ssTmp);
-    ssTmp << "G" << (bRoofFirst?"1":"0") <<"#";
-    nErr = roofCommand(ssTmp.str(), sResp, 'G');
+    ssCmd << OPEN_ROOF_ORDER << (bRoofFirst?"1":"0") <<"#";
+    nErr = roofCommand(ssCmd.str(), sResp, OPEN_ROOF_ORDER);
+
     if(nErr) {
 #if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 2
         m_sLogFile << "["<<getTimeStamp()<<"]"<< " [setRoofOpenOrder] m_bOpenRoofFirst ERROR = " << sResp << std::endl;
@@ -532,17 +541,20 @@ int CRTIRoR::setRoofOpenOrder(bool bRoofFirst)
 }
 
 
-bool CRTIRoR::isRoRMoving()
+bool CRTIRoR::isRorMoving()
 {
     bool bIsMoving;
     int nTmp;
     int nErr = PLUGIN_OK;
+    std::stringstream ssCmd;
     std::string sResp;
 
     if(!m_bIsConnected)
         return NOT_CONNECTED;
 
-    nErr = roofCommand("m#", sResp, 'm');
+    ssCmd << SLEW_STATUS_GET  <<"#";
+    nErr = roofCommand(ssCmd.str(), sResp, SLEW_STATUS_GET);
+
     if(nErr ) {
 #if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 2
         m_sLogFile << "["<<getTimeStamp()<<"]"<< " [isRoRMoving] ERROR = " << sResp << std::endl;
@@ -581,6 +593,7 @@ bool CRTIRoR::isRoRMoving()
 int CRTIRoR::openRoof()
 {
     int nErr = PLUGIN_OK;
+    std::stringstream ssCmd;
     std::string sResp;
     double dRoofVolts;
     double dRoofCutOff;
@@ -594,7 +607,9 @@ int CRTIRoR::openRoof()
     m_sLogFile.flush();
 #endif
 
-    nErr = roofCommand("O#", sResp, 'O');
+    ssCmd << OPEN_ROOF_CMD  <<"#";
+    nErr = roofCommand(ssCmd.str(), sResp, OPEN_ROOF_CMD);
+
     if(nErr) {
 #if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 2
         m_sLogFile << "["<<getTimeStamp()<<"]"<< " [openRoof] ERROR = " << nErr << std::endl;
@@ -628,6 +643,7 @@ int CRTIRoR::openRoof()
 int CRTIRoR::closeRoof()
 {
     int nErr = PLUGIN_OK;
+    std::stringstream ssCmd;
     std::string sResp;
     double dRoofVolts;
     double dRoofCutOff;
@@ -643,7 +659,9 @@ int CRTIRoR::closeRoof()
     m_sLogFile.flush();
 #endif
 
-    nErr = roofCommand("C#", sResp, 'C');
+    ssCmd << CLOSE_ROOF_CMD  <<"#";
+    nErr = roofCommand(ssCmd.str(), sResp, CLOSE_ROOF_CMD);
+
     if(nErr) {
 #if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 2
         m_sLogFile << "["<<getTimeStamp()<<"]"<< " [closeRoof] ERROR Closing shutter : " << nErr << std::endl;
@@ -668,12 +686,14 @@ int CRTIRoR::getFirmwareVersion(std::string &sVersion, float &fVersion)
     std::vector<std::string> firmwareFields;
     std::vector<std::string> versionFields;
     std::string strVersion;
+    std::stringstream ssCmd;
 
     if(!m_bIsConnected)
         return NOT_CONNECTED;
 
+    ssCmd << VERSION_ROOF_GET  <<"#";
+    nErr = roofCommand(ssCmd.str(), sResp, VERSION_ROOF_GET);
 
-    nErr = roofCommand("V#", sResp, 'V');
     if(nErr) {
 #if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 2
         m_sLogFile << "["<<getTimeStamp()<<"]"<< " [getFirmwareVersion] ERROR = " << sResp << std::endl;
@@ -783,13 +803,14 @@ int CRTIRoR::isCloseComplete(bool &bComplete)
 int CRTIRoR::abortCurrentCommand()
 {
     int nErr = PLUGIN_OK;
+    std::stringstream ssCmd;
     std::string sResp;
-    std::stringstream ssCdm;
     
     if(!m_bIsConnected)
         return NOT_CONNECTED;
-    ssCdm << ABORT_MOVE_CMD << "#";
-    nErr = roofCommand( ssCdm.str(), sResp, ABORT_MOVE_CMD);
+
+    ssCmd << ABORT_MOVE_CMD << "#";
+    nErr = roofCommand( ssCmd.str(), sResp, ABORT_MOVE_CMD);
 
     return nErr;
 }
@@ -801,10 +822,14 @@ int CRTIRoR::abortCurrentCommand()
 int CRTIRoR::getDefaultDir(bool &bNormal)
 {
     int nErr = PLUGIN_OK;
+    std::stringstream ssCmd;
     std::string sResp;
 
     bNormal = true;
-    nErr = roofCommand("y#", sResp, 'y');
+
+    ssCmd << REVERSED_ROOF_CMD << "#";
+    nErr = roofCommand( ssCmd.str(), sResp, REVERSED_ROOF_CMD);
+
     if(nErr) {
         return nErr;
     }
@@ -830,21 +855,21 @@ int CRTIRoR::getDefaultDir(bool &bNormal)
 int CRTIRoR::setDefaultDir(bool bNormal)
 {
     int nErr = PLUGIN_OK;
+    std::stringstream ssCmd;
     std::string sResp;
-    std::stringstream ssTmp;
 
     if(!m_bIsConnected)
         return NOT_CONNECTED;
 
-    ssTmp << "y" << (bNormal?"0":"1") << "#";
+    ssCmd << REVERSED_ROOF_CMD << (bNormal?"0":"1") << "#";
 
 #if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 2
     m_sLogFile << "["<<getTimeStamp()<<"]"<< " [setDefaultDir] bNormal = " << (bNormal?"True":"False") << std::endl;
-    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [setDefaultDir] ssTmp = " << ssTmp.str() << std::endl;
+    m_sLogFile << "["<<getTimeStamp()<<"]"<< " [setDefaultDir] ssTmp = " << ssCmd.str() << std::endl;
     m_sLogFile.flush();
 #endif
 
-    nErr = roofCommand(ssTmp.str(), sResp, 'y');
+    nErr = roofCommand(ssCmd.str(), sResp, REVERSED_ROOF_CMD);
     return nErr;
 
 }
@@ -852,10 +877,14 @@ int CRTIRoR::setDefaultDir(bool bNormal)
 int CRTIRoR::getRainSensorStatus(int &nStatus)
 {
     int nErr = PLUGIN_OK;
+    std::stringstream ssCmd;
     std::string sResp;
 
     nStatus = NOT_RAINING;
-    nErr = roofCommand("F#", sResp, 'F');
+
+    ssCmd << RAIN_ROOF_GET << "#";
+    nErr = roofCommand( ssCmd.str(), sResp, RAIN_ROOF_GET);
+
     if(nErr) {
         return nErr;
     }
@@ -884,12 +913,15 @@ int CRTIRoR::getRainSensorStatus(int &nStatus)
 int CRTIRoR::getRoofSpeed(int &nSpeed)
 {
     int nErr = PLUGIN_OK;
+    std::stringstream ssCmd;
     std::string sResp;
 
     if(!m_bIsConnected)
         return NOT_CONNECTED;
 
-    nErr = roofCommand("R#", sResp, 'R');
+    ssCmd << SPEED_ROOF_CMD << "#";
+    nErr = roofCommand( ssCmd.str(), sResp, SPEED_ROOF_CMD);
+
     if(nErr) {
         return nErr;
     }
@@ -915,14 +947,14 @@ int CRTIRoR::getRoofSpeed(int &nSpeed)
 int CRTIRoR::setRoofSpeed(int nSpeed)
 {
     int nErr = PLUGIN_OK;
-    std::stringstream ssTmp;
+    std::stringstream ssCmd;
     std::string sResp;
 
     if(!m_bIsConnected)
         return NOT_CONNECTED;
 
-    ssTmp << "R" << nSpeed << "#";
-    nErr = roofCommand(ssTmp.str(), sResp, 'R');
+    ssCmd << SPEED_ROOF_CMD << nSpeed << "#";
+    nErr = roofCommand(ssCmd.str(), sResp, SPEED_ROOF_CMD);
 
     return nErr;
 }
@@ -930,12 +962,15 @@ int CRTIRoR::setRoofSpeed(int nSpeed)
 int CRTIRoR::getRoofAcceleration(int &nAcceleration)
 {
     int nErr = PLUGIN_OK;
+    std::stringstream ssCmd;
     std::string sResp;
 
     if(!m_bIsConnected)
         return NOT_CONNECTED;
 
-    nErr = roofCommand("E#", sResp, 'E');
+    ssCmd << ACCELERATION_ROOF_CMD << "#";
+    nErr = roofCommand( ssCmd.str(), sResp, ACCELERATION_ROOF_CMD);
+
     if(nErr) {
         return nErr;
     }
@@ -960,32 +995,35 @@ int CRTIRoR::getRoofAcceleration(int &nAcceleration)
 int CRTIRoR::setRoofAcceleration(int nAcceleration)
 {
     int nErr = PLUGIN_OK;
-    std::stringstream ssTmp;
+    std::stringstream ssCmd;
     std::string sResp;
 
     if(!m_bIsConnected)
         return NOT_CONNECTED;
 
-    ssTmp << "E" << nAcceleration << "#";
-    nErr = roofCommand(ssTmp.str(), sResp, 'E');
+    ssCmd << ACCELERATION_ROOF_CMD << nAcceleration << "#";
+    nErr = roofCommand(ssCmd.str(), sResp, ACCELERATION_ROOF_CMD);
     return nErr;
 }
 
 void CRTIRoR::getRoofStatus(int &nStatus)
 {
-    
+    getRoofState(nStatus);
 }
 
 int CRTIRoR::restoreRoofMotorSettings()
 {
     int nErr = PLUGIN_OK;
+    std::stringstream ssCmd;
     std::string sResp;
     int nDummy;
     
     if(!m_bIsConnected)
         return NOT_CONNECTED;
+    
+    ssCmd << RESTORE_MOTOR_DEFAULT << "#";
+    nErr = roofCommand( ssCmd.str(), sResp, RESTORE_MOTOR_DEFAULT);
 
-    nErr = roofCommand("D#", sResp, 'D');
     if(nErr) {
 #if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 2
         m_sLogFile << "["<<getTimeStamp()<<"]"<< " [restoreRoofMotorSettings] ERROR = " <<nErr << std::endl;
@@ -1046,12 +1084,15 @@ void CRTIRoR::writeRainStatus()
 int CRTIRoR::getMACAddress(std::string &MACAddress)
 {
     int nErr = PLUGIN_OK;
+    std::stringstream ssCmd;
     std::string sResp;
 
     if(!m_bIsConnected)
         return NOT_CONNECTED;
 
-    nErr = roofCommand("f#", sResp, 'f');
+    ssCmd << ETH_MAC_ADDRESS << "#";
+    nErr = roofCommand( ssCmd.str(), sResp, ETH_MAC_ADDRESS);
+
     if(nErr) {
 #if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 2
         m_sLogFile << "["<<getTimeStamp()<<"]"<< " [getMACAddress] ERROR = " <<nErr << std::endl;
@@ -1065,17 +1106,21 @@ int CRTIRoR::getMACAddress(std::string &MACAddress)
 int CRTIRoR::reconfigureNetwork()
 {
     int nErr = PLUGIN_OK;
+    std::stringstream ssCmd;
     std::string sResp;
 
     if(!m_bIsConnected)
         return NOT_CONNECTED;
 
     if(m_bNetworkConnected) {
-        nErr = roofCommand("b#", sResp, 0x00); // we won't get an answer as reconfiguring the network will disconnect us.
+        ssCmd << ETH_RECONFIG << "#";
+        nErr = roofCommand( ssCmd.str(), sResp, 0x00);
     }
     else {
-        nErr = roofCommand("b#", sResp, 'b');
+        ssCmd << ETH_RECONFIG << "#";
+        nErr = roofCommand( ssCmd.str(), sResp, ETH_RECONFIG);
     }
+
     if(nErr) {
 #if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 2
         m_sLogFile << "["<<getTimeStamp()<<"]"<< " [reconfigureNetwork] ERROR = " <<nErr << std::endl;
@@ -1088,12 +1133,15 @@ int CRTIRoR::reconfigureNetwork()
 int CRTIRoR::getUseDHCP(bool &bUseDHCP)
 {
     int nErr = PLUGIN_OK;
+    std::stringstream ssCmd;
     std::string sResp;
 
     if(!m_bIsConnected)
         return NOT_CONNECTED;
 
-    nErr = roofCommand("w#", sResp, 'w');
+    ssCmd << IP_DHCP << "#";
+    nErr = roofCommand( ssCmd.str(), sResp, IP_DHCP);
+
     if(nErr) {
 #if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 2
         m_sLogFile << "["<<getTimeStamp()<<"]"<< " [getUseDHCP] ERROR = " <<nErr << std::endl;
@@ -1109,26 +1157,29 @@ int CRTIRoR::getUseDHCP(bool &bUseDHCP)
 int CRTIRoR::setUseDHCP(bool bUseDHCP)
 {
     int nErr = PLUGIN_OK;
-    std::stringstream ssTmp;
+    std::stringstream ssCmd;
     std::string sResp;
 
     if(!m_bIsConnected)
         return NOT_CONNECTED;
 
-    ssTmp << "w" << (bUseDHCP?"1":"0") << "#";
-    nErr = roofCommand(ssTmp.str(), sResp, 'w');
+    ssCmd << IP_DHCP << (bUseDHCP?"1":"0") << "#";
+    nErr = roofCommand(ssCmd.str(), sResp, IP_DHCP);
     return nErr;
 }
 
 int CRTIRoR::getIpAddress(std::string &IpAddress)
 {
     int nErr = PLUGIN_OK;
+    std::stringstream ssCmd;
     std::string sResp;
 
     if(!m_bIsConnected)
         return NOT_CONNECTED;
 
-    nErr = roofCommand("j#", sResp, 'j');
+    ssCmd << IP_ADDRESS << "#";
+    nErr = roofCommand( ssCmd.str(), sResp, IP_ADDRESS);
+
     if(nErr) {
 #if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 2
         m_sLogFile << "["<<getTimeStamp()<<"]"<< " [getIpAddress] ERROR = " <<nErr << std::endl;
@@ -1142,26 +1193,29 @@ int CRTIRoR::getIpAddress(std::string &IpAddress)
 int CRTIRoR::setIpAddress(std::string IpAddress)
 {
     int nErr = PLUGIN_OK;
-    std::stringstream ssTmp;
+    std::stringstream ssCmd;
     std::string sResp;
 
     if(!m_bIsConnected)
         return NOT_CONNECTED;
 
-    ssTmp << "j" << IpAddress << "#";
-    nErr = roofCommand(ssTmp.str(), sResp, 'j');
+    ssCmd << IP_ADDRESS << IpAddress << "#";
+    nErr = roofCommand( ssCmd.str(), sResp, IP_ADDRESS);
     return nErr;
 }
 
 int CRTIRoR::getSubnetMask(std::string &subnetMask)
 {
     int nErr = PLUGIN_OK;
+    std::stringstream ssCmd;
     std::string sResp;
 
     if(!m_bIsConnected)
         return NOT_CONNECTED;
 
-    nErr = roofCommand("p#", sResp, 'p');
+    ssCmd << IP_SUBNET << "#";
+    nErr = roofCommand( ssCmd.str(), sResp, IP_SUBNET);
+
     if(nErr) {
 #if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 2
         m_sLogFile << "["<<getTimeStamp()<<"]"<< " [getSubnetMask] ERROR = " <<nErr << std::endl;
@@ -1176,26 +1230,30 @@ int CRTIRoR::getSubnetMask(std::string &subnetMask)
 int CRTIRoR::setSubnetMask(std::string subnetMask)
 {
     int nErr = PLUGIN_OK;
-    std::stringstream ssTmp;
+    std::stringstream ssCmd;
     std::string sResp;
 
     if(!m_bIsConnected)
         return NOT_CONNECTED;
 
-    ssTmp << "p" << subnetMask << "#";
-    nErr = roofCommand(ssTmp.str(), sResp, 'p');
+    ssCmd << IP_SUBNET << subnetMask << "#";
+    nErr = roofCommand( ssCmd.str(), sResp, IP_SUBNET);
+
     return nErr;
 }
 
 int CRTIRoR::getIPGateway(std::string &IpAddress)
 {
     int nErr = PLUGIN_OK;
+    std::stringstream ssCmd;
     std::string sResp;
 
     if(!m_bIsConnected)
         return NOT_CONNECTED;
 
-    nErr = roofCommand("u#", sResp, 'u');
+    ssCmd << IP_GATEWAY << "#";
+    nErr = roofCommand( ssCmd.str(), sResp, IP_GATEWAY);
+
     if(nErr) {
 #if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 2
         m_sLogFile << "["<<getTimeStamp()<<"]"<< " [getIPGateway] ERROR = " <<nErr << std::endl;
@@ -1209,14 +1267,14 @@ int CRTIRoR::getIPGateway(std::string &IpAddress)
 int CRTIRoR::setIPGateway(std::string IpAddress)
 {
     int nErr = PLUGIN_OK;
-    std::stringstream ssTmp;
+    std::stringstream ssCmd;
     std::string sResp;
 
     if(!m_bIsConnected)
         return NOT_CONNECTED;
 
-    ssTmp << "u" << IpAddress << "#";
-    nErr = roofCommand(ssTmp.str(), sResp, 'u');
+    ssCmd << IP_GATEWAY << IpAddress << "#";
+    nErr = roofCommand(ssCmd.str(), sResp, IP_GATEWAY);
     return nErr;
 }
 

@@ -61,6 +61,7 @@ const char RESTORE_MOTOR_DEFAULT        = 'd'; // restore default values for mot
 const char ETH_MAC_ADDRESS              = 'f'; // get the MAC address.
 const char IP_ADDRESS                   = 'j'; // get/set the IP address
 const char VOLTS_ROTATOR_CMD            = 'k'; // Get volts and get/set cutoff
+const char SLEW_STATUS_GET             = 'm'; // Get Slewing status/direction
 const char IP_SUBNET                    = 'p'; // get/set the ip subnet
 const char SPEED_ROTATOR_CMD            = 'r'; // Get/Set step rate (speed)
 const char STEPSPER_ROTATOR_CMD         = 't'; // Get/set Steps per rotation
@@ -119,8 +120,8 @@ public:
 
     int getBatteryLevel();
 
-    int  getSouthWallPeesent(bool &bPresent);
-    int  setSouthWallPeesent(bool bPresent);
+    int  getSouthWallPresent(bool &bPresent);
+    int  setSouthWallPresent(bool bPresent);
 
     int  getRoofOpenOrder(bool &bRoofFirst);
     int  setRoofOpenOrder(bool bRoofFirst);
@@ -169,7 +170,7 @@ protected:
     int             roofCommand(const std::string sCmd, std::string &sResp, char respCmdCode, int nTimeout = MAX_TIMEOUT);
     int             readResponse(std::string &sResp, int nTimeout = MAX_TIMEOUT);
 
-    bool            isRoRMoving();
+    bool            isRorMoving();
     int             getRoofState(int &nState);
     int             parseFields(std::string sResp, std::vector<std::string> &svFields, char cSeparator);
 
