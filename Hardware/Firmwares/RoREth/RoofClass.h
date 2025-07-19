@@ -7,14 +7,13 @@
 
 #include <atomic>
 
-#ifdef USE_EXT_EEPROM
-#pragma message "External EEPROM enabled"
+#include <extEEPROM.h>
 #include <Wire.h>
-#pragma message "RP2040 I2C"
+
 #define I2C_WIRE    Wire
+
 #define EEPROM_ADDR 0x50
-#define I2C_CHUNK_SIZE  8
-#endif
+#define I2C_CHUNK_SIZE  16
 
 #include <AccelStepper.h>
 #include "StopWatch.h"
@@ -56,6 +55,7 @@
 #define MAX_SPEED           8000
 #define ACCELERATION        7000
 
+#define STEPS_DEFAULT       440640
 
 // DM556T stepper controller min pulse width  = 2.5uS
 // #define MIN_PULSE_WIDTH 3
@@ -91,6 +91,18 @@ typedef struct ShutterConfiguration {
 } Configuration;
 
 
+enum Seeks { NOT_MOVING,           // Not homing or calibrating
+			MOVING_OPEN,
+			HOMING_CLOSE,            // Homing
+			HOMING_FINISH,          // found linit switch
+			CALIBRATION_MOVE_OFF,    // Ignore home until we've moved off while measuring the dome.
+			CALIBRATION_STEP1,      // this is the mode until we hit the home sensor on the first pass
+			CALIBRATION_MOVE_OFF2,   // we need to clear the home sensor again
+			CALIBRATION_MEASURE     // Measuring dome until home hit again.
+};
+
+enum RainActions {DO_NOTHING=0, CLOSE};
+
 AccelStepper stepper(AccelStepper::DRIVER, STEPPER_STEP_PIN, STEPPER_DIRECTION_PIN);
 
 // All possible Shutter state, including option got a dropout
@@ -111,11 +123,7 @@ public:
     void		SetRainAction(const int);
     void		rainInterrupt();
 
-    void        setTopShutterFirst(bool bEnable);
-    bool        getTopShutterFirst();
-    
     // Motor functions
-
     int         GetAcceleration();
     void        SetAcceleration(const int);
 
@@ -145,6 +153,7 @@ public:
     void        Open();
     void        Close();
     void        Run();
+    void        Stop();
     static void motorStop();
     void        motorMoveTo(const long newPosition);
     void        motorMoveRelative(const long amount);
@@ -759,6 +768,15 @@ void RoofClass::Run()
 }
 
 
+void RoofClass::Stop()
+{
+	if (!stepper.isRunning())
+		return;
+
+	m_seekMode = NOT_MOVING;
+	motorStop();
+}
+
 void RoofClass::motorStop()
 {
     stepper.stop();
@@ -782,10 +800,6 @@ void RoofClass::motorMoveRelative(const long amount)
   stepper.move(amount);
 }
 
-
-
-#ifdef USE_EXT_EEPROM
-
 //
 // EEProm code to access the AT24AA128 I2C eeprom
 //
@@ -793,17 +807,16 @@ void RoofClass::motorMoveRelative(const long amount)
 // read one byte
 byte RoofClass::readEEPROMByte(int deviceaddress, unsigned int eeaddress)
 {
-    byte rdata = 0xFF;
-
-    Wire1.beginTransmission(deviceaddress);
-    Wire1.write((int)(eeaddress >> 8)); // MSB
-    Wire1.write((int)(eeaddress & 0xFF)); // LSB
-    Wire1.endTransmission();
-    Wire1.requestFrom(deviceaddress,1);
-    if (Wire1.available()) {
-        rdata = Wire1.read();
-    }
-    return rdata;
+	byte rdata = 0xFF;
+	Wire.beginTransmission(deviceaddress);
+	Wire.write(byte(eeaddress >> 8)); // MSB
+	Wire.write(byte(eeaddress & 0xFF)); // LSB
+	Wire.endTransmission();
+	Wire.requestFrom(deviceaddress,1);
+	if (Wire.available()) {
+		rdata = Wire.read();
+	}
+	return rdata;
 }
 
 // Read from EEPROM into a buffer
@@ -811,41 +824,43 @@ byte RoofClass::readEEPROMByte(int deviceaddress, unsigned int eeaddress)
 void RoofClass::readEEPROMBuffer(int deviceaddress, unsigned int eeaddress, byte *buffer, int length)
 {
 
-    int c = length;
-    int offD = 0;
-    int nc = 0;
+	int c = length;
+	int offD = 0;
+	int nc = 0;
 
-    // read until length bytes is read
-    while (c > 0) {
-        // read maximal I2C_CHUNK_SIZE bytes
-        nc = c;
-        if (nc > I2C_CHUNK_SIZE)
-            nc = I2C_CHUNK_SIZE;
-        readEEPROMBlock(deviceaddress, eeaddress, buffer, offD, nc);
-        eeaddress+=nc;
-        offD+=nc;
-        c-=nc;
-    }
+	// read until length bytes is read
+	while (c > 0) {
+		// read maximal I2C_CHUNK_SIZE bytes
+		nc = c;
+		if (nc > I2C_CHUNK_SIZE)
+			nc = I2C_CHUNK_SIZE;
+		readEEPROMBlock(deviceaddress, eeaddress, buffer, offD, nc);
+		eeaddress+=nc;
+		offD+=nc;
+		c-=nc;
+	}
 }
 
 // Read from eeprom into a buffer  (assuming read lenght if I2C_CHUNK_SIZE or less)
 void RoofClass::readEEPROMBlock(int deviceaddress, unsigned int eeaddress, byte *data, int offset, int length)
 {
-    int r = 0;
-    Wire1.beginTransmission(deviceaddress);
-    if (Wire1.endTransmission()==0) {
-         Wire1.beginTransmission(deviceaddress);
-        Wire1.write(eeaddress >> 8);
-        Wire1.write(eeaddress & 0xFF);
-        if (Wire1.endTransmission()==0) {
-            r = 0;
-            Wire1.requestFrom(deviceaddress, length);
-            while (Wire1.available() > 0 && r<length) {
-                data[offset+r] = (byte)Wire1.read();
-                r++;
-            }
-        }
-    }
+	int r = 0;
+
+
+	Wire.beginTransmission(deviceaddress);
+	if (Wire.endTransmission()==0) {
+	 	Wire.beginTransmission(deviceaddress);
+		Wire.write(byte(eeaddress >> 8));
+		Wire.write(byte(eeaddress & 0xFF));
+		if (Wire.endTransmission()==0) {
+			r = 0;
+			Wire.requestFrom(deviceaddress, length);
+			while (Wire.available() > 0 && r<length) {
+				data[offset+r] = (byte)Wire.read();
+				r++;
+			}
+		}
+	}
 }
 
 
@@ -854,43 +869,38 @@ void RoofClass::readEEPROMBlock(int deviceaddress, unsigned int eeaddress, byte 
 // slice write into CHUNK_SIZE block write. I2C_CHUNK_SIZE <=16
 void RoofClass::writeEEPROM(int deviceaddress, unsigned int eeaddress, byte *data, int length)
 {
-    int c = length;					// bytes left to write
-    int offD = 0;					// current offset in data pointer
-    int offP;						// current offset in page
-    int nc = 0;						// next n bytes to write
+	int c = length;					// bytes left to write
+	int offD = 0;					// current offset in data pointer
+	int offP;						// current offset in page
+	int nc = 0;						// next n bytes to write
 
-    // write all bytes in multiple steps
-    while (c > 0) {
-        // calc offset in page
-        offP = eeaddress % m_EEPROMpageSize;
-        // maximal I2C_CHUNK_SIZE bytes to write
-        nc = min(min(c, I2C_CHUNK_SIZE), m_EEPROMpageSize - offP);
-        writeEEPROMBlock(deviceaddress, eeaddress, data, offD, nc);
-        c-=nc;
-        offD+=nc;
-        eeaddress+=nc;
-    }
+	// write all bytes in multiple steps
+	while (c > 0) {
+		// calc offset in page
+		offP = eeaddress % m_EEPROMpageSize;
+		// maximal 30 bytes to write
+		nc = min(min(c, I2C_CHUNK_SIZE), m_EEPROMpageSize - offP);
+		writeEEPROMBlock(deviceaddress, eeaddress, data, offD, nc);
+		c-=nc;
+		offD+=nc;
+		eeaddress+=nc;
+	}
 }
 
 // Write a buffer to EEPROM
 void RoofClass::writeEEPROMBlock(int deviceaddress, unsigned int eeaddress, byte *data, int offset, int length)
 {
 
-    Wire1.beginTransmission(deviceaddress);
-    if (Wire1.endTransmission()==0) {
-         Wire1.beginTransmission(deviceaddress);
-        Wire1.write(eeaddress >> 8);
-        Wire1.write(eeaddress & 0xFF);
-        byte *adr = data+offset;
-        Wire1.write(adr, length);
-        Wire1.endTransmission();
-        delay(20);
-    } else {
-        DBPrintln("No device at address 0x" + String(deviceaddress, HEX));
-    }
+	Wire.beginTransmission(deviceaddress);
+	if (Wire.endTransmission()==0) {
+	 	Wire.beginTransmission(deviceaddress);
+		Wire.write(byte(eeaddress >> 8));
+		Wire.write(byte(eeaddress & 0xFF));
+		byte *adr = data+offset;
+		Wire.write(adr, length);
+		Wire.endTransmission();
+		delay(20);
+	} else {
+		DBPrintln("No device at address 0x" + String(deviceaddress, HEX));
+	}
 }
-
-#endif
-
-
-
