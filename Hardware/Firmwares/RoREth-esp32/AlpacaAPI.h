@@ -36,6 +36,7 @@ private:
 	EthernetUDP *discoveryServer;
 	int m_UDPPort;
 };
+
 // ALPACA discovery server
 DomeAlpacaDiscoveryServer::DomeAlpacaDiscoveryServer(int port)
 {
@@ -810,7 +811,7 @@ void getShutterStatus(Request &req, Response &res)
 	res.set("Content-Type", "application/json");
 	AlpacaResp["ErrorNumber"] = 0;
 	AlpacaResp["ErrorMessage"] = "";
-/*	
+/*
 	shutterClient.print(sTmpString + "#");
 	switch (RemoteShutter.state) {
 		case OPEN:
@@ -887,8 +888,9 @@ void getSlewing(Request &req, Response &res)
 	res.set("Content-Type", "application/json");
 	AlpacaResp["ErrorNumber"] = 0;
 	AlpacaResp["ErrorMessage"] = "";
-	DBPrintln("Seekmode : " + String(Roof->GetSeekMode()));
-	if(Roof->GetSeekMode() != NOT_MOVING) {
+	DBPrintln("RoofState : " + String(Roof->getRoofState()));
+
+	if(Roof->getRoofState() != NOT_MOVING) {
 		AlpacaResp["Value"] = true;
 	}
 	else {
@@ -949,6 +951,7 @@ void doCloseShutter(Request &req, Response &res)
 	AlpacaResp["ErrorNumber"] = 0;
 	AlpacaResp["ErrorMessage"] = "";
 	// shutterClient.print(sTmpString+ "#");
+	Roof->Close();
 	serializeJson(AlpacaResp, sResp);
 	DBPrintln("sResp : " + sResp);
 	res.write((uint8_t*)(sResp.c_str()),sResp.length());
@@ -1018,6 +1021,8 @@ void doOpenShutter(Request &req, Response &res)
 	else {
 		AlpacaResp["ErrorNumber"] = 0;
 		AlpacaResp["ErrorMessage"] = "";
+		Roof->Open();
+
 		// shutterClient.print(sTmpString+ "#");
 	}
 	serializeJson(AlpacaResp, sResp);

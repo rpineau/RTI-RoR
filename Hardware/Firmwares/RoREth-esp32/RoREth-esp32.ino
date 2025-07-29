@@ -36,6 +36,11 @@
 
 #define Computer Serial     // USB = Serial
 
+
+// FreeRTOS stuff
+#define MOTOR_EVENT_BIT	( 1 << 0 )
+EventGroupHandle_t xEventGroup;
+
 #include "RoofClass.h"
 
 #ifdef USE_ETHERNET
@@ -136,6 +141,7 @@ void setup()
 
 	nbEthernetClient = 0;
 
+	xEventGroup = xEventGroupCreate();
 #ifdef DEBUG
 	DebugPort.begin(115200, SERIAL_8N1, 16, 17); // pins 16 rx2, 17 tx2, 115200 bps, 8 bits no parity 1 stop bit
 	//DebugPort.begin(115200);
@@ -166,6 +172,7 @@ void setup()
 	Roof->motorStop();
 	Roof->Stop();
 	Roof->EnableMotor(false);
+	xEventGroupClearBits(xEventGroup, MOTOR_EVENT_BIT);
 
 #ifdef USE_ETHERNET
 	configureEthernet();
@@ -218,7 +225,10 @@ void loop()
 //
 void MotorTask(void *)
 {
+	EventBits_t uxBits;
 	const TickType_t xDelay = 1 / portTICK_PERIOD_MS;
+	const TickType_t xTicksToWait = 100 / portTICK_PERIOD_MS;
+
 	DBPrintln("========== Motor task starting ==========");
 	DBPrintln("========== Motor task Attaching interrupt handler ==========");
 	attachInterrupt(digitalPinToInterrupt(CLOSE_PIN), closeIntHandler, FALLING);
@@ -231,7 +241,25 @@ void MotorTask(void *)
 	DBPrintln("========== Motor task ready ==========");
 
 	for(;;) {
-		Roof->Run();
+		uxBits = xEventGroupWaitBits(
+            xEventGroup,
+            MOTOR_EVENT_BIT,
+            pdTRUE,        // MOTOR_EVENT_BIT should be cleared before returning.
+            pdFALSE,
+            xTicksToWait ); // Wait a maximum of 100ms for the bit to be set. */
+
+		if( ( uxBits & MOTOR_EVENT_BIT ) != 0 ) {
+			Roof->Run();
+			if(Roof->isRunning()) {
+				xEventGroupSetBits(xEventGroup, MOTOR_EVENT_BIT);
+			}
+			else {
+				xEventGroupClearBits(xEventGroup, MOTOR_EVENT_BIT);
+			}
+		}
+		else {
+			// timeout
+		}
 		vTaskDelay(xDelay);
 		// taskYIELD();
 		esp_task_wdt_reset();
@@ -502,6 +530,7 @@ void ProcessCommand(int nSource)
 
 		case CALIBRATE_ROOF:
 			Roof->StartCalibrating();
+			xEventGroupSetBits(xEventGroup, MOTOR_EVENT_BIT);
 			serialMessage = String(CALIBRATE_ROOF);
 			break;
 
@@ -589,8 +618,8 @@ void ProcessCommand(int nSource)
 		case CLOSE_ROOF:
 			sTmpString = String(CLOSE_ROOF);
 			serialMessage = sTmpString;
-#pragma message "FixMe"
-			// Roof->Close();
+			Roof->Close();
+			xEventGroupSetBits(xEventGroup, MOTOR_EVENT_BIT);
 			break;
 
 		case SHUTTER_RESTORE_MOTOR_DEFAULT :
@@ -599,17 +628,19 @@ void ProcessCommand(int nSource)
 			break;
 
 		case OPEN_ROOF:
-			sTmpString = String(OPEN_ROOF);
-#pragma message "FixMe"
-			// serialMessage = sTmpString + RemoteShutter.lowVoltStateOrRaining;
-			// Roof->Open();
+			serialMessage = String(OPEN_ROOF);
+			if(Roof->GetVoltsAreLow())
+				serialMessage += "L";
+			else {
+				Roof->Open();
+				xEventGroupSetBits(xEventGroup, MOTOR_EVENT_BIT);
+			}
 			break;
 
 		case REVERSED_ROOF:
 			if (hasValue)
 				Roof->SetReversed(value.toInt());
 			serialMessage = String(REVERSED_ROOF) + String(Roof->GetReversed());
-			break;
 			break;
 
 		case SPEED_ROOF:
@@ -620,14 +651,12 @@ void ProcessCommand(int nSource)
 
 		case STATE_ROOF:
 			sTmpString = String(STATE_ROOF);
-#pragma message "FixMe"
-			// serialMessage = sTmpString + Roof->getSt
+			serialMessage = sTmpString + Roof->getRoofState();
 			break;
 
 		case STEPSPER_ROOF:
 			if (hasValue)
 				Roof->SetStepsPerStroke(value.toInt());
-#pragma message "FixMe"
 			serialMessage = String(STEPSPER_ROOF) + String(Roof->GetStepsPerStroke());
 			break;
 
@@ -674,6 +703,8 @@ void ProcessCommand(int nSource)
 void Abort()
 {
 	String shutterMessage;
-	if(Roof)
-			Roof->Stop();
+	if(Roof) {
+		Roof->Stop();
+		xEventGroupClearBits(xEventGroup, MOTOR_EVENT_BIT);
+	}
 }

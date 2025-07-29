@@ -109,17 +109,8 @@ typedef struct RoofConfiguration {
 } Configuration;
 
 
-enum Seeks { NOT_MOVING,           // Not homing or calibrating
-			MOVING_GOTO,
-			MOVING_OPENING,
-			MOVING_CLOSING,
-			FINISHING_OPEN,
-			FINISHING_CLOSE,
-			CALIBRATION_STEP1,
-			CALIBRATION_MEASURE
-};
 
-enum ShutterStates { OPEN, CLOSED, OPENING, CLOSING, ERROR, FINISHING_OPENING, FINISHING_CLOSING };
+enum ShutterStates { OPEN, CLOSED, NOT_MOVING, OPENING, CLOSING, ERROR, FINISHING_OPENING, FINISHING_CLOSING,CALIBRATION_STEP1,CALIBRATION_MEASURE};
 
 AccelStepper stepper(AccelStepper::DRIVER, STEP_PIN, DIRECTION_PIN);
 
@@ -167,7 +158,7 @@ public:
 	bool        GetVoltsAreLow();
 	String      GetVoltString();
 
-	int         GetSeekMode();
+	int         getRoofState();
 
 	// Homing and Calibration
 	void        StartCalibrating();
@@ -179,8 +170,11 @@ public:
 	void        Run();
 	void        Stop();
 	void        motorStop();
+	void		Open();
+	void		Close();
 	void        motorMoveRelative(const long howFar);
-
+	void		GotoPosition(const long nPos);
+	bool		isRunning();
 	void		ButtonCheck();
 
 #ifdef USE_ETHERNET
@@ -208,7 +202,7 @@ private:
 	bool            m_bWasRunning;
 	bool            m_bisClose;
 	bool            m_bisOpen;
-	std::atomic<enum Seeks>	m_seekMode;
+	int				m_nShutterState;
 	bool            m_bDoStepsPerStroke;
 
 	StopWatch       m_MoveOffUntilTimer;
@@ -222,7 +216,7 @@ private:
 	// Power values
 	double           m_fAdcConvert;
 	int             m_nVolts;
-	int             ReadVolts();
+	int             MeasureVoltage();
 
 
 	StopWatch       m_periodicReadingTimer;
@@ -256,7 +250,7 @@ RoofClass::RoofClass()
 	// AT24AA128 page size is 64 byte
 	m_EEPROMpageSize = 64;
 
-	m_seekMode = NOT_MOVING;
+	m_nShutterState = NOT_MOVING;
 	m_bWasRunning = false;
 	m_bDoStepsPerStroke = false;
 	m_nMoveDirection = MOVE_NONE;
@@ -330,7 +324,7 @@ void RoofClass::openInterrupt()
 
 	nPos = stepper.currentPosition(); // read position immediately
 
-	switch(m_seekMode) {
+	switch(m_nShutterState) {
 		case CLOSING: // stop and take note of where we are so we can reverse.
 			motorStop();
 			// at close position = 0;
@@ -348,7 +342,7 @@ void RoofClass::openInterrupt()
 /*
 		case CALIBRATION_STEP1: // take note of the first edge
 			m_nHomePosEdgePass1 = nPos;
-			m_seekMode = CALIBRATION_MOVE_OFF2; // let's not be fooled by the double trigger
+			m_nShutterState = CALIBRATION_MOVE_OFF2; // let's not be fooled by the double trigger
 			m_MoveOffUntilTimer.reset();
 			break;
 
@@ -374,7 +368,7 @@ void RoofClass::closedInterrupt()
 
 	nPos = stepper.currentPosition(); // read position immediately
 
-	switch(m_seekMode) {
+	switch(m_nShutterState) {
 		case CLOSING: // stop and take note of where we are so we can reverse.
 			motorStop();
 			// at close position = 0;
@@ -392,7 +386,7 @@ void RoofClass::closedInterrupt()
 /*
 		case CALIBRATION_STEP1: // take note of the first edge
 			m_nHomePosEdgePass1 = nPos;
-			m_seekMode = CALIBRATION_MOVE_OFF2; // let's not be fooled by the double trigger
+			m_nShutterState = CALIBRATION_MOVE_OFF2; // let's not be fooled by the double trigger
 			m_MoveOffUntilTimer.reset();
 			break;
 
@@ -607,7 +601,7 @@ long RoofClass::GetPosition()
 	long position;
 	position = stepper.currentPosition();
 #pragma message "FixMe"
-/*	if (m_seekMode < CALIBRATION_MOVE_OFF) {
+/*	if (m_nShutterState < CALIBRATION_MOVE_OFF) {
 		while (position >= m_Config.stepsPerStroke)
 			position -= m_Config.stepsPerStroke;
 
@@ -688,7 +682,7 @@ inline String RoofClass::GetVoltString()
 	return String(m_nVolts) + "," + String(m_Config.cutOffVolts);
 }
 
-int RoofClass::ReadVolts()
+int RoofClass::MeasureVoltage()
 {
 	int adc;
 	double calc;
@@ -698,9 +692,9 @@ int RoofClass::ReadVolts()
 	return int(calc);
 }
 
-int RoofClass::GetSeekMode()
+int RoofClass::getRoofState()
 {
-	return m_seekMode;
+	return m_nShutterState;
 }
 
 
@@ -714,11 +708,11 @@ void RoofClass::StartCalibrating()
 	if(m_bisClose) {
 		m_MoveOffUntilTimer.reset();
 #pragma message "FixMe"
-		// m_seekMode = CALIBRATION_MOVE_OFF;
+		// m_nShutterState = CALIBRATION_MOVE_OFF;
 		MoveRelative(-5000);
 	}
 	else {
-		m_seekMode = CALIBRATION_STEP1;
+		m_nShutterState = CALIBRATION_STEP1;
 		MoveRelative(160000000L);
 	}
 }
@@ -728,11 +722,11 @@ void RoofClass::Calibrate()
 #pragma message "FixMe"
 
 /*
-	if (m_seekMode > HOMING_HOME) {
-		switch (m_seekMode) {
+	if (m_nShutterState > HOMING_HOME) {
+		switch (m_nShutterState) {
 			case(CALIBRATION_MOVE_OFF):
 				if (!stepper.isRunning()) {
-					m_seekMode = CALIBRATION_STEP1;
+					m_nShutterState = CALIBRATION_STEP1;
 					stepper.setCurrentPosition(0);
 					MoveRelative(160000000L);
 				}
@@ -740,13 +734,13 @@ void RoofClass::Calibrate()
 
 			case(CALIBRATION_MOVE_OFF2):
 				if(m_MoveOffUntilTimer.elapsed() >= m_nMOVE_OFFUntilLapse) {
-					m_seekMode = CALIBRATION_MEASURE;
+					m_nShutterState = CALIBRATION_MEASURE;
 				}
 				break;
 
 			case(CALIBRATION_MEASURE):
 				if (!stepper.isRunning()) { // we have to wait for it to have stopped
-					m_seekMode = HOMING_FINISH;
+					m_nShutterState = HOMING_FINISH;
 					m_bSetToHomeAzimuth = true;
 					m_bDoStepsPerStroke = true; // Once stopped, set SPR to stepper position and save to eeprom.
 				}
@@ -781,11 +775,51 @@ void RoofClass::MoveRelative(const long howFar)
 		m_nMoveDirection = MOVE_POSITIVE;
 	else if(howFar == 0 ) {
 		m_nMoveDirection = MOVE_NONE;
-		m_seekMode = NOT_MOVING;
+		m_nShutterState = NOT_MOVING;
 		return;
 		}
 
 	motorMoveRelative(howFar);
+}
+
+void RoofClass::GotoPosition(const long nPos)
+{
+		// Goto new target
+	double position;
+	double delta;
+
+	position = stepper.currentPosition();
+	delta = nPos - position;
+	MoveRelative(delta);
+}
+
+void RoofClass::Open()
+{
+	m_nVolts = MeasureVoltage();
+	if(GetVoltsAreLow()) // do not try to open if we're already at low voltage
+		return;
+
+	if (digitalRead(OPEN_PIN) == 0) {
+		m_nShutterState = OPEN;
+		return;
+	}
+
+	m_nShutterState = OPENING;
+	DBPrintln("shutterState = OPENING");
+#pragma message "FixMe to move to calibrated value"
+	MoveRelative(160000000L);
+}
+
+void RoofClass::Close()
+{
+	if (digitalRead(CLOSE_PIN) == 0) {
+		m_nShutterState = CLOSED;
+		return;
+	}
+	m_nShutterState = CLOSING;
+	DBPrintln("shutterState = CLOSING");
+#pragma message "FixMe to move to 0"
+	GotoPosition(0L); // close
 }
 
 
@@ -802,6 +836,12 @@ void RoofClass::ButtonCheck()
 	}
 }
 
+bool RoofClass::isRunning()
+{
+	return m_bWasRunning;
+}
+
+
 void RoofClass::Run()
 {
 	long stepsFromZero;
@@ -809,12 +849,12 @@ void RoofClass::Run()
 	double azimuthDelta;
 
 	if (m_periodicReadingTimer.elapsed() >= m_nNextPeriodicReadingLapse) {
-		m_nVolts = ReadVolts();
+		m_nVolts = MeasureVoltage();
 		m_periodicReadingTimer.reset();
 	}
 #pragma message "FixMe"
 
-	//if (m_seekMode > HOMING_HOME)
+	//if (m_nShutterState > HOMING_HOME)
 	// 	Calibrate();
 
 	stepper.run(); // on Core 1
@@ -822,10 +862,10 @@ void RoofClass::Run()
 	if (stepper.isRunning()) {
 		m_bWasRunning = true;
 #pragma message "FixMe"
-		// if (m_seekMode == HOMING_HOME && m_HomeFound) { // We're looking for home and found it
+		// if (m_nShutterState == HOMING_HOME && m_HomeFound) { // We're looking for home and found it
 		// 	Stop();
 		// 	m_bSetToHomeAzimuth = true; // Need to set home az but not until rotator is stopped;
-		// 	m_seekMode = HOMING_FINISH;
+		// 	m_nShutterState = HOMING_FINISH;
 		// 	return;
 		// }
 		return;
@@ -833,9 +873,9 @@ void RoofClass::Run()
 
 #pragma message "FixMe"
 
-	// if( m_seekMode == HOMING_BACK_HOME) {
+	// if( m_nShutterState == HOMING_BACK_HOME) {
 	// 	m_bisClose = true; // we're back home and done homing.
-	// 	m_seekMode = NOT_MOVING;
+	// 	m_nShutterState = NOT_MOVING;
 	// }
 
 	if (m_bDoStepsPerStroke) {
@@ -861,7 +901,7 @@ void RoofClass::Run()
 			stepper.setCurrentPosition(stepsFromZero);
 		}
 
-		if( m_seekMode == NOT_MOVING) {
+		if( m_nShutterState == NOT_MOVING) {
 			// not moving anymore ..
 			m_nMoveDirection = MOVE_NONE;
 			EnableMotor(false);
@@ -883,10 +923,10 @@ void RoofClass::Run()
 			stepper.setCurrentPosition(position);
 		}
 
-		if(m_seekMode == MOVING_GOTO) {
+		if(m_nShutterState == OPENING || m_nShutterState == CLOSING) {
 			m_nMoveDirection = MOVE_NONE;
 			EnableMotor(false);
-			m_seekMode = NOT_MOVING;
+			m_nShutterState = NOT_MOVING;
 			position = stepper.currentPosition();
 			while (position >= m_Config.stepsPerStroke)
 				position -= m_Config.stepsPerStroke;
@@ -906,7 +946,7 @@ void RoofClass::Stop()
 	if (!stepper.isRunning())
 		return;
 
-	m_seekMode = NOT_MOVING;
+	m_nShutterState = NOT_MOVING;
 	motorStop();
 }
 
