@@ -195,6 +195,12 @@ public:
 	std::atomic<int>    nStepperInterruptFreq;
 
 	static String IpAddress2String(const IPAddress& ipAddress);
+
+	// fake function for Alpaca and other app that expect a dome
+	void GoToAzimuth(double dAz);
+	double GetAzimuth();
+	void SetParkAzimuth(double dAz);
+	void SyncPosition(double dNewPos);
 private:
 	Configuration   m_Config;
 
@@ -212,6 +218,10 @@ private:
 	std::atomic<long>	m_nStepsAtHome;
 	std::atomic<long>	m_nHomePosEdgePass1;
 	volatile 	long	m_nHomePosEdgePass2;
+
+	// fake function varialbles.
+	double m_dAz = 0;
+	double m_dParkAz = 0;
 
 	// Power values
 	double           m_fAdcConvert;
@@ -562,6 +572,30 @@ bool RoofClass::GetConditionStatus()
 		m_bIsBadCondition = false;
 
 	return m_bIsBadCondition;
+}
+
+//
+// Fake method for Alpaca and app that expect a dome
+//
+void RoofClass::GoToAzimuth(double dAz)
+{
+	m_dAz = dAz;
+}
+
+double RoofClass::GetAzimuth()
+{
+	return m_dAz;
+}
+
+void RoofClass::SetParkAzimuth(double dAz)
+{
+	m_dParkAz = dAz;
+}
+
+void RoofClass::SyncPosition(double dNewPos)
+{
+		m_dAz = dNewPos;
+
 }
 
 //

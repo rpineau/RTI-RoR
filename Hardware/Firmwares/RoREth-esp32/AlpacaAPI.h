@@ -657,7 +657,7 @@ void getAzimuth(Request &req, Response &res)
 	res.set("Content-Type", "application/json");
 	AlpacaResp["ErrorNumber"] = 0;
 	AlpacaResp["ErrorMessage"] = "";
-	// AlpacaResp["Value"] = Roof->GetAzimuth();
+	AlpacaResp["Value"] = Roof->GetAzimuth();
 	serializeJson(AlpacaResp, sResp);
 	DBPrintln("sResp : " + sResp);
 	res.write((uint8_t*)(sResp.c_str()),sResp.length());
@@ -691,7 +691,7 @@ void canPark(Request &req, Response &res)
 	res.set("Content-Type", "application/json");
 	AlpacaResp["ErrorNumber"] = 0;
 	AlpacaResp["ErrorMessage"] = "";
-	AlpacaResp["Value"] = true;
+	AlpacaResp["Value"] = false;
 	serializeJson(AlpacaResp, sResp);
 	DBPrintln("sResp : " + sResp);
 	res.write((uint8_t*)(sResp.c_str()),sResp.length());
@@ -950,7 +950,6 @@ void doCloseShutter(Request &req, Response &res)
 
 	AlpacaResp["ErrorNumber"] = 0;
 	AlpacaResp["ErrorMessage"] = "";
-	// shutterClient.print(sTmpString+ "#");
 	Roof->Close();
 	serializeJson(AlpacaResp, sResp);
 	DBPrintln("sResp : " + sResp);
@@ -1022,8 +1021,6 @@ void doOpenShutter(Request &req, Response &res)
 		AlpacaResp["ErrorNumber"] = 0;
 		AlpacaResp["ErrorMessage"] = "";
 		Roof->Open();
-
-		// shutterClient.print(sTmpString+ "#");
 	}
 	serializeJson(AlpacaResp, sResp);
 	DBPrintln("sResp : " + sResp);
@@ -1049,8 +1046,6 @@ void doPark(Request &req, Response &res)
 		return;
 	}
 
-	// fParkPos = Roof->GetParkAzimuth();
-	// Roof->GoToAzimuth(fParkPos);
 	bParked = true;
 	AlpacaResp["ErrorNumber"] = 0;
 	AlpacaResp["ErrorMessage"] = "";
@@ -1084,8 +1079,8 @@ void setPark(Request &req, Response &res)
 	serializeJson(AlpacaResp, sResp);
 	DBPrintln("sResp : " + sResp);
 	res.write((uint8_t*)(sResp.c_str()),sResp.length());
-	// fParkPos = Roof->GetAzimuth();
-	// Roof->SetParkAzimuth(fParkPos);
+	fParkPos = Roof->GetAzimuth();
+	Roof->SetParkAzimuth(fParkPos);
 }
 
 void doAltitudeSlew(Request &req, Response &res)
@@ -1169,7 +1164,7 @@ void doGoTo(Request &req, Response &res)
 		return;
 	}
 
-	// Roof->GoToAzimuth(dNewPos);
+	Roof->GoToAzimuth(dNewPos);
 	AlpacaResp["ErrorNumber"] = 0;
 	AlpacaResp["ErrorMessage"] = "";
 	serializeJson(AlpacaResp, sResp);
@@ -1215,7 +1210,7 @@ void doSyncAzimuth(Request &req, Response &res)
 		return;
 	}
 
-	// Roof->SyncPosition(dNewPos);
+	Roof->SyncPosition(dNewPos);
 	AlpacaResp["ErrorNumber"] = 0;
 	AlpacaResp["ErrorMessage"] = "";
 	serializeJson(AlpacaResp, sResp);
