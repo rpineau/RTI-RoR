@@ -36,6 +36,7 @@
 #include "../../licensedinterfaces/serxinterface.h"
 
 #include "StopWatch.h"
+#include "ror_commands.h"
 
 #define MAKE_ERR_CODE(P_ID, DTYPE, ERR_CODE)  (((P_ID<<24) & 0xff000000) | ((DTYPE<<16) & 0x00ff0000)  | (ERR_CODE & 0x0000ffff))
 
@@ -52,41 +53,9 @@
 
 #define PLUGIN_DEBUG 2
 
-
-// Roof commands
-const char ABORT_MOVE_CMD               = 'a'; // Tell everything to STOP!
-const char ETH_RECONFIG                 = 'b'; // reconfigure ethernet
-const char CALIBRATE_ROTATOR_CMD        = 'c'; // Calibrate the dome
-const char RESTORE_MOTOR_DEFAULT        = 'd'; // restore default values for motor control.
-const char ETH_MAC_ADDRESS              = 'f'; // get the MAC address.
-const char IP_ADDRESS                   = 'j'; // get/set the IP address
-const char VOLTS_ROTATOR_CMD            = 'k'; // Get volts and get/set cutoff
-const char SLEW_STATUS_GET             = 'm'; // Get Slewing status/direction
-const char IP_SUBNET                    = 'p'; // get/set the ip subnet
-const char SPEED_ROTATOR_CMD            = 'r'; // Get/Set step rate (speed)
-const char STEPSPER_ROTATOR_CMD         = 't'; // Get/set Steps per rotation
-const char IP_GATEWAY                   = 'u'; // get/set default gateway IP
-const char IP_DHCP                      = 'w'; // get/set DHCP mode
-const char RAIN_ROOF_GET             = 'F'; // Get rain status
-// Roof commands
-const char CLOSE_ROOF_CMD            = 'C'; // Close shutter
-const char SHUTTER_RESTORE_MOTOR_DEFAULT= 'D'; // Restore default values for motor control.
-const char ACCELERATION_ROOF_CMD     = 'E'; // Get/Set stepper acceleration
-const char OPEN_ROOF_ORDER           = 'G'; // set the sequencing order for roof/south wall opening
-const char STATE_ROOF_GET            = 'M'; // Get shutter state
-const char OPEN_ROOF_CMD             = 'O'; // Open the shutter
-const char POSITION_ROOF_GET            = 'P'; // Get step position
-const char SHUTTER_PANID_GET            = 'Q'; // get and set the XBEE PAN ID
-const char SPEED_ROOF_CMD            = 'R'; // Get/Set step rate (speed)
-const char STEPSPER_ROOF_CMD         = 'T'; // Get/Set steps per stroke
-const char VERSION_ROOF_GET          = 'V'; // Get version string
-const char REVERSED_ROOF_CMD         = 'Y'; // Get/Set stepper reversed status
-const char SOUTH_WALL_PRESENT        =  'Z'; // enable/disable south wall operations
-
-
 // Error code
-enum RTIRoRErrors {PLUGIN_OK=0, NOT_CONNECTED, CANT_CONNECT, BAD_CMD_RESPONSE, COMMAND_FAILED, COMMAND_TIMEOUT, ERR_RAINING, ERR_BATTERY_LOW};
-enum RTIRoRRoofState { OPEN=0 , CLOSED, OPENING, CLOSING, BOTTOM_OPEN, BOTTOM_CLOSED, BOTTOM_OPENING, BOTTOM_CLOSING, ROOF_ERROR, FINISHING_OPEN, FINISHING_CLOSE };
+enum RoRErrors {PLUGIN_OK=0, NOT_CONNECTED, CANT_CONNECT, BAD_CMD_RESPONSE, COMMAND_FAILED, COMMAND_TIMEOUT, ERR_RAINING, ERR_BATTERY_LOW};
+enum RoofStates { OPEN, CLOSED, NOT_MOVING, OPENING, CLOSING, ROOF_ERROR, FINISHING_OPENING, FINISHING_CLOSING,CALIBRATION_STEP1,CALIBRATION_MEASURE};
 
 enum HomeStatuses {NOT_AT_HOME = 0, HOMED, ATHOME};
 enum RainActions {DO_NOTHING=0, HOME, PARK};

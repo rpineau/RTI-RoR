@@ -311,8 +311,8 @@ int CRTIRoR::getRoofState(int &nState)
     if(!m_bIsConnected)
         return NOT_CONNECTED;
 
-    ssCmd << STATE_ROOF_GET << '#';
-    nErr = roofCommand(ssCmd.str(), sResp, STATE_ROOF_GET);
+    ssCmd << STATE_ROOF << '#';
+    nErr = roofCommand(ssCmd.str(), sResp, STATE_ROOF);
 
     if(nErr) {
 #if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 2
@@ -360,8 +360,8 @@ int CRTIRoR::getBatteryLevels(double &dRoofVolts, double &dRoofCutOff)
     dRoofVolts  = 0;
     dRoofCutOff = 0;
 
-    ssCmd << VOLTS_ROTATOR_CMD << '#';
-    nErr = roofCommand(ssCmd.str(), sResp, VOLTS_ROTATOR_CMD);
+    ssCmd << VOLTS_ROOF << '#';
+    nErr = roofCommand(ssCmd.str(), sResp, VOLTS_ROOF);
 
     if(nErr) {
 #if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 2
@@ -416,8 +416,8 @@ int CRTIRoR::setBatteryCutOff(double dRoofCutOff)
 
     nRoofCutOff = dRoofCutOff * 100.0;
 
-    ssCmd << VOLTS_ROTATOR_CMD << nRoofCutOff <<"#";
-    nErr = roofCommand(ssCmd.str(), sResp, VOLTS_ROTATOR_CMD);
+    ssCmd << VOLTS_ROOF << nRoofCutOff <<"#";
+    nErr = roofCommand(ssCmd.str(), sResp, VOLTS_ROOF);
 
     if(nErr) {
 #if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 2
@@ -435,8 +435,12 @@ int CRTIRoR::getSouthWallPresent(bool &bPresent)
     std::stringstream ssCmd;
     std::string sResp;
 
-    ssCmd << SOUTH_WALL_PRESENT << '#';
-    nErr = roofCommand(ssCmd.str(), sResp, SOUTH_WALL_PRESENT);
+	// FIXME
+	bPresent = false;
+	return nErr;
+
+    // ssCmd << SOUTH_WALL_PRESENT << '#';
+    // nErr = roofCommand(ssCmd.str(), sResp, SOUTH_WALL_PRESENT);
 
     if(nErr) {
         return nErr;
@@ -472,8 +476,12 @@ int CRTIRoR::setSouthWallPresent(bool bPresent)
     if(!m_bIsConnected)
         return NOT_CONNECTED;
 
-    ssCmd <<SOUTH_WALL_PRESENT << (bPresent?"1":"0") <<"#";
-    nErr = roofCommand(ssCmd.str(), sResp, SOUTH_WALL_PRESENT);
+	// FIXME
+	bPresent = false;
+	return nErr;
+
+    // ssCmd <<SOUTH_WALL_PRESENT << (bPresent?"1":"0") <<"#";
+    // nErr = roofCommand(ssCmd.str(), sResp, SOUTH_WALL_PRESENT);
 
     if(nErr) {
 #if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 2
@@ -492,8 +500,12 @@ int CRTIRoR::getRoofOpenOrder(bool &bRoofFirst)
     std::stringstream ssCmd;
     std::string sResp;
 
-    ssCmd << OPEN_ROOF_ORDER  <<"#";
-    nErr = roofCommand(ssCmd.str(), sResp, OPEN_ROOF_ORDER);
+	// FIXME
+	bRoofFirst = false;
+	return nErr;
+
+    // ssCmd << OPEN_ROOF_ORDER  <<"#";
+    // nErr = roofCommand(ssCmd.str(), sResp, OPEN_ROOF_ORDER);
 
     if(nErr) {
         return nErr;
@@ -526,8 +538,11 @@ int CRTIRoR::setRoofOpenOrder(bool bRoofFirst)
     if(!m_bIsConnected)
         return NOT_CONNECTED;
 
-    ssCmd << OPEN_ROOF_ORDER << (bRoofFirst?"1":"0") <<"#";
-    nErr = roofCommand(ssCmd.str(), sResp, OPEN_ROOF_ORDER);
+	// FIXME
+	return nErr;
+
+    // ssCmd << OPEN_ROOF_ORDER << (bRoofFirst?"1":"0") <<"#";
+    // nErr = roofCommand(ssCmd.str(), sResp, OPEN_ROOF_ORDER);
 
     if(nErr) {
 #if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 2
@@ -552,8 +567,8 @@ bool CRTIRoR::isRorMoving()
     if(!m_bIsConnected)
         return NOT_CONNECTED;
 
-    ssCmd << SLEW_STATUS_GET  <<"#";
-    nErr = roofCommand(ssCmd.str(), sResp, SLEW_STATUS_GET);
+    ssCmd << STATE_ROOF  <<"#";
+    nErr = roofCommand(ssCmd.str(), sResp, STATE_ROOF);
 
     if(nErr ) {
 #if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 2
@@ -607,8 +622,8 @@ int CRTIRoR::openRoof()
     m_sLogFile.flush();
 #endif
 
-    ssCmd << OPEN_ROOF_CMD  <<"#";
-    nErr = roofCommand(ssCmd.str(), sResp, OPEN_ROOF_CMD);
+    ssCmd << OPEN_ROOF  <<"#";
+    nErr = roofCommand(ssCmd.str(), sResp, OPEN_ROOF);
 
     if(nErr) {
 #if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 2
@@ -659,8 +674,8 @@ int CRTIRoR::closeRoof()
     m_sLogFile.flush();
 #endif
 
-    ssCmd << CLOSE_ROOF_CMD  <<"#";
-    nErr = roofCommand(ssCmd.str(), sResp, CLOSE_ROOF_CMD);
+    ssCmd << CLOSE_ROOF  <<"#";
+    nErr = roofCommand(ssCmd.str(), sResp, CLOSE_ROOF);
 
     if(nErr) {
 #if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 2
@@ -691,8 +706,8 @@ int CRTIRoR::getFirmwareVersion(std::string &sVersion, float &fVersion)
     if(!m_bIsConnected)
         return NOT_CONNECTED;
 
-    ssCmd << VERSION_ROOF_GET  <<"#";
-    nErr = roofCommand(ssCmd.str(), sResp, VERSION_ROOF_GET);
+    ssCmd << VERSION_ROOF  <<"#";
+    nErr = roofCommand(ssCmd.str(), sResp, VERSION_ROOF);
 
     if(nErr) {
 #if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 2
@@ -809,8 +824,8 @@ int CRTIRoR::abortCurrentCommand()
     if(!m_bIsConnected)
         return NOT_CONNECTED;
 
-    ssCmd << ABORT_MOVE_CMD << "#";
-    nErr = roofCommand( ssCmd.str(), sResp, ABORT_MOVE_CMD);
+    ssCmd << ABORT << "#";
+    nErr = roofCommand( ssCmd.str(), sResp, ABORT);
 
     return nErr;
 }
@@ -827,8 +842,8 @@ int CRTIRoR::getDefaultDir(bool &bNormal)
 
     bNormal = true;
 
-    ssCmd << REVERSED_ROOF_CMD << "#";
-    nErr = roofCommand( ssCmd.str(), sResp, REVERSED_ROOF_CMD);
+    ssCmd << REVERSED_ROOF << "#";
+    nErr = roofCommand( ssCmd.str(), sResp, REVERSED_ROOF);
 
     if(nErr) {
         return nErr;
@@ -861,7 +876,7 @@ int CRTIRoR::setDefaultDir(bool bNormal)
     if(!m_bIsConnected)
         return NOT_CONNECTED;
 
-    ssCmd << REVERSED_ROOF_CMD << (bNormal?"0":"1") << "#";
+    ssCmd << REVERSED_ROOF << (bNormal?"0":"1") << "#";
 
 #if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 2
     m_sLogFile << "["<<getTimeStamp()<<"]"<< " [setDefaultDir] bNormal = " << (bNormal?"True":"False") << std::endl;
@@ -869,7 +884,7 @@ int CRTIRoR::setDefaultDir(bool bNormal)
     m_sLogFile.flush();
 #endif
 
-    nErr = roofCommand(ssCmd.str(), sResp, REVERSED_ROOF_CMD);
+    nErr = roofCommand(ssCmd.str(), sResp, REVERSED_ROOF);
     return nErr;
 
 }
@@ -882,8 +897,8 @@ int CRTIRoR::getRainSensorStatus(int &nStatus)
 
     nStatus = NOT_RAINING;
 
-    ssCmd << RAIN_ROOF_GET << "#";
-    nErr = roofCommand( ssCmd.str(), sResp, RAIN_ROOF_GET);
+    ssCmd << COND_ROOF << "#";
+    nErr = roofCommand( ssCmd.str(), sResp, COND_ROOF);
 
     if(nErr) {
         return nErr;
@@ -919,8 +934,8 @@ int CRTIRoR::getRoofSpeed(int &nSpeed)
     if(!m_bIsConnected)
         return NOT_CONNECTED;
 
-    ssCmd << SPEED_ROOF_CMD << "#";
-    nErr = roofCommand( ssCmd.str(), sResp, SPEED_ROOF_CMD);
+    ssCmd << SPEED_ROOF << "#";
+    nErr = roofCommand( ssCmd.str(), sResp, SPEED_ROOF);
 
     if(nErr) {
         return nErr;
@@ -953,8 +968,8 @@ int CRTIRoR::setRoofSpeed(int nSpeed)
     if(!m_bIsConnected)
         return NOT_CONNECTED;
 
-    ssCmd << SPEED_ROOF_CMD << nSpeed << "#";
-    nErr = roofCommand(ssCmd.str(), sResp, SPEED_ROOF_CMD);
+    ssCmd << SPEED_ROOF << nSpeed << "#";
+    nErr = roofCommand(ssCmd.str(), sResp, SPEED_ROOF);
 
     return nErr;
 }
@@ -968,8 +983,8 @@ int CRTIRoR::getRoofAcceleration(int &nAcceleration)
     if(!m_bIsConnected)
         return NOT_CONNECTED;
 
-    ssCmd << ACCELERATION_ROOF_CMD << "#";
-    nErr = roofCommand( ssCmd.str(), sResp, ACCELERATION_ROOF_CMD);
+    ssCmd << ACCELERATION_ROOF << "#";
+    nErr = roofCommand( ssCmd.str(), sResp, ACCELERATION_ROOF);
 
     if(nErr) {
         return nErr;
@@ -1001,8 +1016,8 @@ int CRTIRoR::setRoofAcceleration(int nAcceleration)
     if(!m_bIsConnected)
         return NOT_CONNECTED;
 
-    ssCmd << ACCELERATION_ROOF_CMD << nAcceleration << "#";
-    nErr = roofCommand(ssCmd.str(), sResp, ACCELERATION_ROOF_CMD);
+    ssCmd << ACCELERATION_ROOF << nAcceleration << "#";
+    nErr = roofCommand(ssCmd.str(), sResp, ACCELERATION_ROOF);
     return nErr;
 }
 
@@ -1021,8 +1036,8 @@ int CRTIRoR::restoreRoofMotorSettings()
     if(!m_bIsConnected)
         return NOT_CONNECTED;
     
-    ssCmd << RESTORE_MOTOR_DEFAULT << "#";
-    nErr = roofCommand( ssCmd.str(), sResp, RESTORE_MOTOR_DEFAULT);
+    ssCmd << ROOF_RESTORE_MOTOR_DEFAULT << "#";
+    nErr = roofCommand( ssCmd.str(), sResp, ROOF_RESTORE_MOTOR_DEFAULT);
 
     if(nErr) {
 #if defined PLUGIN_DEBUG && PLUGIN_DEBUG >= 2

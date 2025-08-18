@@ -622,9 +622,9 @@ void ProcessCommand(int nSource)
 			xEventGroupSetBits(xEventGroup, MOTOR_EVENT_BIT);
 			break;
 
-		case SHUTTER_RESTORE_MOTOR_DEFAULT :
+		case ROOF_RESTORE_MOTOR_DEFAULT :
 			Roof->restoreDefaultMotorSettings();
-			serialMessage = String(RESTORE_MOTOR_DEFAULT);
+			serialMessage = String(ROOF_RESTORE_MOTOR_DEFAULT);
 			break;
 
 		case OPEN_ROOF:

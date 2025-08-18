@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 53;
+	objectVersion = 54;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -15,6 +15,8 @@
 		938EAFE11D0C858700ED2086 /* rti_ror.h in Headers */ = {isa = PBXBuildFile; fileRef = 938EAFDF1D0C858700ED2086 /* rti_ror.h */; };
 		938EAFE31D0C988800ED2086 /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 938EAFE21D0C988800ED2086 /* IOKit.framework */; };
 		938EAFE51D0C989400ED2086 /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 938EAFE41D0C989400ED2086 /* CoreFoundation.framework */; };
+		939D8BD22E4BFFED0004D6A1 /* ror_commands.h in Headers */ = {isa = PBXBuildFile; fileRef = 939D8BD12E4BFFED0004D6A1 /* ror_commands.h */; };
+		939D8BD42E4CE8B50004D6A1 /* StopWatch.h in Headers */ = {isa = PBXBuildFile; fileRef = 939D8BD32E4CE8B50004D6A1 /* StopWatch.h */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -27,6 +29,8 @@
 		938EAFDF1D0C858700ED2086 /* rti_ror.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = rti_ror.h; sourceTree = "<group>"; };
 		938EAFE21D0C988800ED2086 /* IOKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = IOKit.framework; path = System/Library/Frameworks/IOKit.framework; sourceTree = SDKROOT; };
 		938EAFE41D0C989400ED2086 /* CoreFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreFoundation.framework; path = System/Library/Frameworks/CoreFoundation.framework; sourceTree = SDKROOT; };
+		939D8BD12E4BFFED0004D6A1 /* ror_commands.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ror_commands.h; sourceTree = "<group>"; };
+		939D8BD32E4CE8B50004D6A1 /* StopWatch.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = StopWatch.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -71,6 +75,8 @@
 		938EAFD51D0C84E900ED2086 /* Sources */ = {
 			isa = PBXGroup;
 			children = (
+				939D8BD32E4CE8B50004D6A1 /* StopWatch.h */,
+				939D8BD12E4BFFED0004D6A1 /* ror_commands.h */,
 				938EAFDE1D0C858700ED2086 /* rti_ror.cpp */,
 				938EAFDF1D0C858700ED2086 /* rti_ror.h */,
 				938EAFD61D0C84F700ED2086 /* main.cpp */,
@@ -88,7 +94,9 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				939D8BD22E4BFFED0004D6A1 /* ror_commands.h in Headers */,
 				938EAFE11D0C858700ED2086 /* rti_ror.h in Headers */,
+				939D8BD42E4CE8B50004D6A1 /* StopWatch.h in Headers */,
 				938EAFDB1D0C84F700ED2086 /* main.h in Headers */,
 				938EAFDD1D0C84F700ED2086 /* x2dome.h in Headers */,
 			);
@@ -279,7 +287,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CLANG_CXX_LIBRARY = "compiler-default";
-				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_IDENTITY = "-";
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = PB97QXVYQC;
 				DYLIB_COMPATIBILITY_VERSION = 1;
@@ -300,7 +308,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CLANG_CXX_LIBRARY = "compiler-default";
-				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_IDENTITY = "-";
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = PB97QXVYQC;
 				DYLIB_COMPATIBILITY_VERSION = 1;
