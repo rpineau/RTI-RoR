@@ -873,7 +873,6 @@ void RoofClass::Run()
 
 	if( m_nRoofState == CALIBRATION_STEP_RESET) {
 		m_nRoofState = CALIBRATION_STEP_OPENING;
-
 	}
 
 	if (m_bDoStepsPerStroke) {
@@ -902,14 +901,6 @@ void RoofClass::Run()
 			position = stepper.currentPosition();
 		}
 
-		if(m_nRoofState == OPENING || m_nRoofState == CLOSING) {
-			m_nMoveDirection = MOVE_NONE;
-			EnableMotor(false);
-			m_nRoofState = NOT_MOVING;
-			position = stepper.currentPosition();
-			stepper.setCurrentPosition(position);
-		}
-
 		if(m_nRoofState == FINISHING_CLOSING) {
 			if(digitalRead(CLOSE_PIN) != LOW) {
 				// not quite close. move a bit more.
@@ -917,14 +908,29 @@ void RoofClass::Run()
 					position = 1000;
 				Close();
 			}
+			else {
+				m_nRoofState = NOT_MOVING;
+			}
 		}
 
 		if(m_nRoofState == FINISHING_OPENING) {
+			if(digitalRead(OPEN_PIN) != LOW) {
 				if(position == m_Config.stepsPerStroke)
 					m_Config.stepsPerStroke +=1000;
-			m_bDoStepsPerStroke = true; // adjust open position value
-			Open();
+				m_bDoStepsPerStroke = true; // adjust open position value
+				Open();
+			}
+			else {
+				m_nRoofState = NOT_MOVING;
+			}
 		}
+
+		if(m_nRoofState == NOT_MOVING) {
+			m_nMoveDirection = MOVE_NONE;
+			EnableMotor(false);
+			position = stepper.currentPosition();
+		}
+
 	} // end if (m_bWasRunning)
 }
 
