@@ -12,36 +12,13 @@
 #include <rtc_wdt.h>
 #include <esp_task_wdt.h>
 #include <atomic>
-#define DEBUG   // enable debug to serial port defined as DebugPort
-
-#ifdef DEBUG
-#pragma message "Debug messages enabled"
-#define DebugPort Serial1    //  Rx2,Tx2 =  Serial1
-#define DBPrint(x) if(DebugPort) DebugPort.print(x)
-#define DBPrintln(x) if(DebugPort) DebugPort.println(x)
-#define DBPrintHex(x) if(DebugPort) DebugPort.print(x, HEX)
-#else
-#pragma message "Debug messages disabled"
-#define DBPrint(x)
-#define DBPrintln(x)
-#define DBPrintHex(x)
-#endif // DEBUG
-
-#define VERSION "2.645"
-#define MAX_TIMEOUT 10
-
-#define USE_EXT_EEPROM
-#define USE_ETHERNET
-#define USE_ALPACA
-
-#define Computer Serial     // USB = Serial
-
+#include "RoofClass.h"
+#include "config.h"
 
 // FreeRTOS stuff
 #define MOTOR_EVENT_BIT	( 1 << 0 )
 EventGroupHandle_t xEventGroup;
 
-#include "RoofClass.h"
 
 #ifdef USE_ETHERNET
 #pragma message "Ethernet enabled"

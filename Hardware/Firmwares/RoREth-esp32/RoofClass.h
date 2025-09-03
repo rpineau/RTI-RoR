@@ -6,82 +6,13 @@
 //
 
 #include <atomic>
-
 #include <extEEPROM.h>
 #include <Wire.h>
-
-#define I2C_WIRE    Wire
-
-#define EEPROM_ADDR 0x50
-#define I2C_CHUNK_SIZE  16
-
-
 #include <AccelStepper.h>
+
 #include "StopWatch.h"
+#include "config.h"
 
-// set this to match the type of steps configured on the
-// stepper controller
-#define STEP_TYPE 8
-
-
-//
-// ESP32 dev boards
-//
-// input
-#define OPEN_PIN            33
-#define CLOSE_PIN           15
-#define BUTTON_CLOSE        14
-#define BUTTON_OPEN         27
-#define COND_SENSOR_PIN     25
-#define SPARE1				34
-#define SPARE2				26
-// ouput
-#define STEPPER_ENABLE_PIN  13  // Digital Output
-#define DIRECTION_PIN        2  // Digital Output
-#define STEP_PIN            32  // Digital Output
-#define SPARE_OUT1			 0
-#define SPARE_OUT2			12
-
-// analog
-#define VOLTAGE_MONITOR_PIN A0  // GPIO26/ADC0
-#define AD_REF      3.3
-#define RES_MULT    5.0 // resistor voltage divider on the shield
-
-
-#define MOVE_NEGATIVE       -1
-#define MOVE_NONE            0
-#define MOVE_POSITIVE        1
-
-// #define M_ENABLE    HIGH
-// #define M_DISABLE   LOW
-#define M_ENABLE    LOW
-#define M_DISABLE   HIGH
-
-// A4988
-//#define M_ENABLE    LOW
-//#define M_DISABLE   HIGH
-
-#define MAX_SPEED           8000
-#define ACCELERATION        7000
-
-/*
-Micro-steps per Stroke with original motor and 15.3:1 gearbox
-	NexDome 2m      : 440640
-	Explora-Dome 8' : 479800
-*/
-
-#define STEPS_DEFAULT       440640
-
-// DM556T stepper controller min pulse width  = 2.5uS
-// #define MIN_PULSE_WIDTH 3
-
-// ISD02/04/08 stepper controller min pulse width = 5uS at 1600rev/s (8 microsteps).
-// TB6600 Stepper controller min pulse width = 5uS
-#define MIN_PULSE_WIDTH 5
-
-// used to offset the config location.. at some point.
-#define EEPROM_LOCATION     0  // not used with Arduino Due flash
-#define EEPROM_SIGNATURE    0001
 
 #ifdef USE_ETHERNET
 typedef struct IPCONFIG {
