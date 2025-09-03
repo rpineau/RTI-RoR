@@ -26,11 +26,6 @@ EventGroupHandle_t xEventGroup;
 #include <SPI.h>    // ESP32 :  SCK: GPIO18, SDO/TX: GPIO23, SDI: GPIO19, CS: GPIO5, Reset : GPIO29, Int : GPIO0
 #include <Ethernet.h>
 #include "EtherMac.h"
-#define ETHERNET_CS     5
-#define ETHERNET_INT	0
-#define ETHERNET_RESET  4
-#define CMD_SERVER_PORT 2323
-#define domeEthernet Ethernet
 uint32_t uidBuffer[4];  // Board unique ID
 byte MAC_Address[6];    // Mac address, uses part of the unique ID
 IPConfig ServerConfig;
