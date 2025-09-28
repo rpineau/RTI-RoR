@@ -10,10 +10,10 @@ const char ACCELERATION_ROTATOR         = 'e'; // Get/Set stepper acceleration
 const char ETH_MAC_ADDRESS              = 'f'; // get the MAC address.
 const char IP_ADDRESS                   = 'j'; // get/set the IP address
 const char IP_SUBNET                    = 'p'; // get/set the ip subnet
-const char PANID                        = 'q'; // get and set the XBEE PAN ID
+const char SSID                         = 'q'; // get and set the XBEE PAN ID
 const char IP_GATEWAY                   = 'u'; // get/set default gateway IP
 const char IP_DHCP                      = 'w'; // get/set DHCP mode
-const char COND_ROOF                 = 'F'; // Get rain status (from client) or tell shutter it's raining (from Rotator)
+const char COND_ROOF                    = 'F'; // Get rain status (from client) or tell shutter it's raining (from Rotator)
 
 const char CLOSE_ROOF                    = 'C'; // Close shutter
 const char ROOF_RESTORE_MOTOR_DEFAULT    = 'D'; // Restore default values for motor control.
