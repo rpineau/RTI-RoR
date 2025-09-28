@@ -1,6 +1,8 @@
 //
 // RTI-Zone RoR firmware.
 // 
+//  Copyright © 2024 Rodolphe Pineau. All rights reserved.
+//
 
 // Debug printing, uncomment #define DEBUG to enable
 #define DEBUG

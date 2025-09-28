@@ -1,5 +1,5 @@
 //
-// RTI-Zone Dome Rotator firmware.
+// RTI-Zone RoR firmware.
 //
 //  Copyright © 2024 Rodolphe Pineau. All rights reserved.
 //

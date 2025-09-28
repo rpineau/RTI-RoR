@@ -1,5 +1,7 @@
 //
-// Create MAC address from DUE unique ID
+// Create MAC address from MCU unique ID
+//
+//  Copyright © 2024 Rodolphe Pineau. All rights reserved.
 //
 
 #ifndef __ETHER_MAC__

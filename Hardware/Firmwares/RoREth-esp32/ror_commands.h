@@ -1,5 +1,5 @@
 //
-// Rotator commands
+// RoR commands
 //
 //  Copyright © 2020 Rodolphe Pineau. All rights reserved.
 //

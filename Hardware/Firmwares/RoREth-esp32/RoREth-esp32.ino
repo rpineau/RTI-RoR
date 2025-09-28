@@ -1,5 +1,5 @@
 //
-// RTI-Zone Dome Roof firmware.
+// RTI-Zone RoR firmware.
 // for ESP32
 //
 // Copyright © 2025 Rodolphe Pineau. All rights reserved.

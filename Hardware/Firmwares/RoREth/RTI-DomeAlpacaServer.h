@@ -1,4 +1,6 @@
-// Alpaca done server
+// Alpaca server
+//
+//  Copyright © 2024 Rodolphe Pineau. All rights reserved.
 //
 
 #ifndef RTI_DOME_ALPACA_SERVER
