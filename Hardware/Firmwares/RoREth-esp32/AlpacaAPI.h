@@ -27,6 +27,7 @@ UUID uuid;
 String sAlpacaDiscovery = "alpacadiscovery1";
 String sRedirectURL;
 volatile bool bAlpacaConnected = false;
+
 class DomeAlpacaDiscoveryServer
 {
 public:
@@ -126,6 +127,7 @@ void formDataToJson(Request &req, JsonDocument &FormData)
 	char value[ALPACA_VAR_BUF_LEN];
 	String sName;
 	String sValue;
+
 	memset(name,0,ALPACA_VAR_BUF_LEN);
 	memset(value,0,ALPACA_VAR_BUF_LEN);
 	while(req.form(name, ALPACA_VAR_BUF_LEN-1, value, ALPACA_VAR_BUF_LEN-1)){
@@ -169,6 +171,7 @@ void  getQueryGetVariables(String sQueryString, std::vector<std::vector<String>>
 	String sEntry;
 	std::vector<String> svKV;
 	std::vector<String> svFields;
+
 	DBPrintln("getQueryGetVariables");
 	// url parameters are separate by '&'
 	while(true) {
@@ -202,6 +205,7 @@ bool getIDs(Request &req, JsonDocument &AlpacaResp, JsonDocument &FormData)
 	String sClientTransactionId;
 	std::vector<std::vector<String>> svParameters;
 	bool bParamOk = true;
+
 	DBPrintln("getIDs");
 	AlpacaResp["ServerTransactionID"] = nTransactionID;
 	if(req.method() == Request::GET) {
@@ -263,6 +267,7 @@ void getApiVersion(Request &req, Response &res)
 	JsonDocument FormData;
 	bool bParamsOk = false;
 	String sResp;
+
 	DBPrintln("[ ********** getApiVersion ********** ]");
 	bParamsOk = getIDs(req, AlpacaResp, FormData);
 	res.set("Content-Type", "application/json");
@@ -278,6 +283,7 @@ void getDescription(Request &req, Response &res)
 	JsonDocument FormData;
 	bool bParamsOk = false;
 	String sResp;
+
 	DBPrintln("[ ********** getDescription ********** ]");
 	bParamsOk = getIDs(req, AlpacaResp, FormData);
 	res.set("Content-Type", "application/json");
@@ -296,6 +302,7 @@ void getConfiguredDevice(Request &req, Response &res)
 	JsonDocument FormData;
 	bool bParamsOk = false;
 	String sResp;
+
 	DBPrintln("[ ********** getConfiguredDevice ********** ]");
 	bParamsOk = getIDs(req, AlpacaResp, FormData);
 	res.set("Content-Type", "application/json");
@@ -316,6 +323,7 @@ void doAction(Request &req, Response &res)
 	String sResp;
 	String sAction;
 	String sParameters;
+
 	DBPrintln("[ ********** doAction ********** ]");
 	bParamsOk = getIDs(req, AlpacaResp, FormData);
 	res.set("Content-Type", "application/json");
@@ -351,6 +359,7 @@ void doCommandBlind(Request &req, Response &res)
 	String sResp;
 	String sClientId;
 	String sClientTransactionId;
+
 	DBPrintln("[ ********** doCommandBlind ********** ]");
 	bParamsOk = getIDs(req, AlpacaResp, FormData);
 	res.set("Content-Type", "application/json");
@@ -378,6 +387,7 @@ void doCommandBool(Request &req, Response &res)
 	String sResp;
 	String sClientId;
 	String sClientTransactionId;
+
 	DBPrintln("[ ********** doCommandBool ********** ]");
 	bParamsOk = getIDs(req, AlpacaResp, FormData);
 	res.set("Content-Type", "application/json");
@@ -406,6 +416,7 @@ void doCommandString(Request &req, Response &res)
 	String sResp;
 	String sClientId;
 	String sClientTransactionId;
+
 	DBPrintln("[ ********** doCommandString ********** ]");
 	bParamsOk = getIDs(req, AlpacaResp, FormData);
 	res.set("Content-Type", "application/json");
@@ -432,6 +443,7 @@ void getConnected(Request &req, Response &res)
 	JsonDocument FormData;
 	bool bParamsOk = false;
 	String sResp;
+
 	DBPrintln("[ ********** getConected ********** ]");
 	bParamsOk = getIDs(req, AlpacaResp, FormData);
 	res.set("Content-Type", "application/json");
@@ -453,6 +465,7 @@ void setConnected(Request &req, Response &res)
 	String sClientTransactionId;
 	String sParameter;
 	String sTmp;
+
 	DBPrintln("[ ********** setConected ********** ]");
 	bParamsOk = getIDs(req, AlpacaResp, FormData);
 	res.set("Content-Type", "application/json");
@@ -717,50 +730,18 @@ void getSupportedActions(Request &req, Response &res)
 	JsonDocument FormData;
 	bool bParamsOk = false;
 	String sResp;
+
 	DBPrintln("[ ********** getSupportedActions ********** ]");
 	bParamsOk = getIDs(req, AlpacaResp, FormData);
+
 	res.set("Content-Type", "application/json");
-	AlpacaResp["Value"].add("EthernetReconfigure");
-	AlpacaResp["Value"].add("Calibrate");
-	AlpacaResp["Value"].add("RestoreMotorDefault");
-	AlpacaResp["Value"].add("GetRoofAcceleration");
-	AlpacaResp["Value"].add("SetRoofAcceleration");
-	AlpacaResp["Value"].add("GetMacAddress");
-	AlpacaResp["Value"].add("GetIpAddress");
-	AlpacaResp["Value"].add("SetIpAddress");
-	AlpacaResp["Value"].add("RoofVolts");
-	AlpacaResp["Value"].add("GetRainAction");
-	AlpacaResp["Value"].add("SetRainAction");
-	AlpacaResp["Value"].add("isShutterPresent");
-	AlpacaResp["Value"].add("GetSubnet");
-	AlpacaResp["Value"].add("SetSubnet");
-	AlpacaResp["Value"].add("GetPanID");
-	AlpacaResp["Value"].add("SetPanID");
-	AlpacaResp["Value"].add("GetRoofSpeed");
-	AlpacaResp["Value"].add("SetRoofSpeed");
-	AlpacaResp["Value"].add("GetStepPerRev");
-	AlpacaResp["Value"].add("SetStepPerRev");
-	AlpacaResp["Value"].add("GetIpGateway");
-	AlpacaResp["Value"].add("SetIpGateway");
-	AlpacaResp["Value"].add("GetDhcp");
-	AlpacaResp["Value"].add("SetDhcp");
-	AlpacaResp["Value"].add("GetRoofReverse");
-	AlpacaResp["Value"].add("SetRoofReverse");
-	AlpacaResp["Value"].add("GetRainStatus");
-	AlpacaResp["Value"].add("RestoreMotorDefaultShutter");
-	AlpacaResp["Value"].add("GetShutterAcceleration");
-	AlpacaResp["Value"].add("SetShutterAcceleration");
-	AlpacaResp["Value"].add("ShutterHello");
-	AlpacaResp["Value"].add("GetShutterPanID");
-	AlpacaResp["Value"].add("SetShutterPanID");
-	AlpacaResp["Value"].add("GetShutterSpeed");
-	AlpacaResp["Value"].add("SetShutterSpeed");
-	AlpacaResp["Value"].add("GetShutterReverse");
-	AlpacaResp["Value"].add("SetShutterReverse");
+
+	AlpacaResp["Value"] = "[]";
 	AlpacaResp["ErrorNumber"] = 0;
 	AlpacaResp["ErrorMessage"] = "";
 	serializeJson(AlpacaResp, sResp);
 	DBPrintln("sResp : " + sResp);
+
 	res.write((uint8_t*)(sResp.c_str()),sResp.length());
 }
 
@@ -1424,6 +1405,345 @@ void doSetup(Request &req, Response &res)
 	res.print(sHTML);
 }
 
+//
+// controller settings API
+//
+void reverseDirectionState(Request &req, Response &res)
+{
+	JsonDocument controllerResp;
+	String sResp;
+	bool bReversed = false;
+
+	if(req.method() == Request::PUT) {
+		JsonDocument FormData;
+		formDataToJson(req, FormData);
+		if(FormData.size()==0){
+		}
+		else {
+			if(FormData["value"].is<bool>()) {
+				bReversed = FormData["value"];
+				Roof->SetReversed(bReversed);
+			}
+		}
+	}
+
+	controllerResp["value"] = Roof->GetReversed();
+	serializeJson(controllerResp, sResp);
+	DBPrintln("sResp : " + sResp);
+
+	res.set("Content-Type", "application/json");
+	res.write((uint8_t*)(sResp.c_str()),sResp.length());
+}
+
+
+void useDHCPState(Request &req, Response &res)
+{
+	JsonDocument controllerResp;
+	String sResp;
+	bool bUseDhcp = false;
+
+	if(req.method() == Request::PUT) {
+		JsonDocument FormData;
+		formDataToJson(req, FormData);
+		if(FormData.size()==0){
+		}
+		else {
+			if(FormData["value"].is<bool>()) {
+				bUseDhcp = FormData["value"];
+				Roof->setDHCPFlag(bUseDhcp);
+			}
+		}
+	}
+
+	controllerResp["value"] = Roof->getDHCPFlag();
+	serializeJson(controllerResp, sResp);
+	DBPrintln("sResp : " + sResp);
+
+	res.set("Content-Type", "application/json");
+	res.write((uint8_t*)(sResp.c_str()),sResp.length());
+}
+
+void macAddressValue(Request &req, Response &res)
+{
+	JsonDocument controllerResp;
+	String sResp;
+
+	controllerResp["value"] = String(MAC_Address[0], HEX) + String(":") +
+					String(MAC_Address[1], HEX) + String(":") +
+					String(MAC_Address[2], HEX) + String(":") +
+					String(MAC_Address[3], HEX) + String(":") +
+					String(MAC_Address[4], HEX) + String(":") +
+					String(MAC_Address[5], HEX);
+
+	serializeJson(controllerResp, sResp);
+	DBPrintln("sResp : " + sResp);
+
+	res.set("Content-Type", "application/json");
+	res.write((uint8_t*)(sResp.c_str()),sResp.length());
+
+}
+
+void ipAddressValue(Request &req, Response &res)
+{
+	JsonDocument controllerResp;
+	String sResp;
+
+	if(req.method() == Request::PUT) {
+		JsonDocument FormData;
+		formDataToJson(req, FormData);
+		if(FormData.size()==0){
+		}
+		else {
+			if(FormData["value"].is<String>()) {
+				Roof->setIPAddress(FormData["value"]);
+			}
+		}
+	}
+
+	controllerResp["value"] = String(RoofClass::IpAddress2String(domeEthernet.localIP()));
+	serializeJson(controllerResp, sResp);
+	DBPrintln("sResp : " + sResp);
+
+	res.set("Content-Type", "application/json");
+	res.write((uint8_t*)(sResp.c_str()),sResp.length());
+}
+
+void subnetMaskValue(Request &req, Response &res)
+{
+	JsonDocument controllerResp;
+	String sResp;
+
+	if(req.method() == Request::PUT) {
+		JsonDocument FormData;
+		formDataToJson(req, FormData);
+		if(FormData.size()==0){
+		}
+		else {
+			if(FormData["value"].is<String>()) {
+				Roof->setIPSubnet(FormData["value"]);
+			}
+		}
+	}
+
+	controllerResp["value"] = String(RoofClass::IpAddress2String(domeEthernet.subnetMask()));
+	serializeJson(controllerResp, sResp);
+	DBPrintln("sResp : " + sResp);
+
+	res.set("Content-Type", "application/json");
+	res.write((uint8_t*)(sResp.c_str()),sResp.length());
+}
+
+void ipGetewayValue(Request &req, Response &res)
+{
+	JsonDocument controllerResp;
+	String sResp;
+
+	if(req.method() == Request::PUT) {
+		JsonDocument FormData;
+		formDataToJson(req, FormData);
+		if(FormData.size()==0){
+		}
+		else {
+			if(FormData["value"].is<String>()) {
+				Roof->setIPGateway(FormData["value"]);
+			}
+		}
+	}
+
+	controllerResp["value"] = String(RoofClass::IpAddress2String(domeEthernet.gatewayIP()));
+	serializeJson(controllerResp, sResp);
+	DBPrintln("sResp : " + sResp);
+
+	res.set("Content-Type", "application/json");
+	res.write((uint8_t*)(sResp.c_str()),sResp.length());
+}
+
+void roofCalibrateAction(Request &req, Response &res)
+{
+	JsonDocument controllerResp;
+	String sResp;
+
+	if(req.method() == Request::PUT) {
+		JsonDocument FormData;
+		formDataToJson(req, FormData);
+		if(FormData.size()==0){
+		}
+		else {
+			if(FormData["value"].is<String>()) {
+				if(FormData["value"] == "start") {
+					Roof->StartCalibrating();
+				}
+				if(FormData["value"] == "abort") {
+					Roof->Stop();
+				}
+			}
+		}
+	}
+
+	controllerResp["value"] = String(RoofClass::IpAddress2String(domeEthernet.gatewayIP()));
+	serializeJson(controllerResp, sResp);
+	DBPrintln("sResp : " + sResp);
+
+	res.set("Content-Type", "application/json");
+	res.write((uint8_t*)(sResp.c_str()),sResp.length());
+}
+
+void stepPerOpenValue(Request &req, Response &res)
+{
+	JsonDocument controllerResp;
+	String sResp;
+
+	if(req.method() == Request::PUT) {
+		JsonDocument FormData;
+		formDataToJson(req, FormData);
+		if(FormData.size()==0){
+		}
+		else {
+			if(FormData["value"].is<long>()) {
+				Roof->SetStepsPerStroke(FormData["value"]);
+			}
+		}
+	}
+
+	controllerResp["value"] = Roof->GetStepsPerStroke();
+	serializeJson(controllerResp, sResp);
+	DBPrintln("sResp : " + sResp);
+
+	res.set("Content-Type", "application/json");
+	res.write((uint8_t*)(sResp.c_str()),sResp.length());
+}
+
+void roofSpeedValue(Request &req, Response &res)
+{
+	JsonDocument controllerResp;
+	String sResp;
+
+	if(req.method() == Request::PUT) {
+		JsonDocument FormData;
+		formDataToJson(req, FormData);
+		if(FormData.size()==0){
+		}
+		else {
+			if(FormData["value"].is<long>()) {
+				Roof->SetMaxSpeed(FormData["value"]);
+			}
+		}
+	}
+
+	controllerResp["value"] = Roof->GetMaxSpeed();
+	serializeJson(controllerResp, sResp);
+	DBPrintln("sResp : " + sResp);
+
+	res.set("Content-Type", "application/json");
+	res.write((uint8_t*)(sResp.c_str()),sResp.length());
+}
+
+void roofAccelerationValue(Request &req, Response &res)
+{
+	JsonDocument controllerResp;
+	String sResp;
+
+	if(req.method() == Request::PUT) {
+		JsonDocument FormData;
+		formDataToJson(req, FormData);
+		if(FormData.size()==0){
+		}
+		else {
+			if(FormData["value"].is<long>()) {
+				Roof->SetAcceleration(FormData["value"]);
+			}
+		}
+	}
+
+	controllerResp["value"] = Roof->GetAcceleration();
+	serializeJson(controllerResp, sResp);
+	DBPrintln("sResp : " + sResp);
+
+	res.set("Content-Type", "application/json");
+	res.write((uint8_t*)(sResp.c_str()),sResp.length());
+}
+
+
+void restoreMotorValues(Request &req, Response &res)
+{
+	JsonDocument controllerResp;
+	String sResp;
+
+	Roof->restoreDefaultMotorSettings();
+	controllerResp["value"] = "Restored";
+	serializeJson(controllerResp, sResp);
+	DBPrintln("sResp : " + sResp);
+
+	res.set("Content-Type", "application/json");
+	res.write((uint8_t*)(sResp.c_str()),sResp.length());
+}
+
+
+void roofVoltageCutoffValue(Request &req, Response &res)
+{
+	JsonDocument controllerResp;
+	String sResp;
+
+	if(req.method() == Request::PUT) {
+		JsonDocument FormData;
+		formDataToJson(req, FormData);
+		if(FormData.size()==0){
+		}
+		else {
+			if(FormData["value"].is<long>()) {
+				Roof->SetLowVoltageCutoff(FormData["value"]);
+			}
+		}
+	}
+
+	controllerResp["value"] = Roof->GetVoltString();
+	serializeJson(controllerResp, sResp);
+	DBPrintln("sResp : " + sResp);
+
+	res.set("Content-Type", "application/json");
+	res.write((uint8_t*)(sResp.c_str()),sResp.length());
+}
+
+#pragma message FIXME
+void unsafeAction(Request &req, Response &res)
+{
+	JsonDocument controllerResp;
+	String sResp;
+
+	if(req.method() == Request::PUT) {
+		JsonDocument FormData;
+		formDataToJson(req, FormData);
+		if(FormData.size()==0){
+		}
+		else {
+			if(FormData["value"].is<long>()) {
+				// Roof->SetConditionsAction(FormData["value"]);
+			}
+		}
+	}
+
+	// controllerResp["value"] = Roof->GetConditionsAction();
+	serializeJson(controllerResp, sResp);
+	DBPrintln("sResp : " + sResp);
+
+	res.set("Content-Type", "application/json");
+	res.write((uint8_t*)(sResp.c_str()),sResp.length());
+}
+
+
+void envConditionState(Request &req, Response &res)
+{
+	JsonDocument controllerResp;
+	String sResp;
+
+	controllerResp["value"] = bool(bIsSafe);
+	serializeJson(controllerResp, sResp);
+	DBPrintln("sResp : " + sResp);
+
+	res.set("Content-Type", "application/json");
+	res.write((uint8_t*)(sResp.c_str()),sResp.length());
+}
+
 
 class DomeAlpacaServer
 {
@@ -1508,6 +1828,26 @@ void DomeAlpacaServer::startServer()
 	m_AlpacaRestServer->put("/api/v1/dome/0/slewtoaltitude", &doAltitudeSlew);
 	m_AlpacaRestServer->put("/api/v1/dome/0/slewtoazimuth", &doGoTo);
 	m_AlpacaRestServer->put("/api/v1/dome/0/synctoazimuth", &doSyncAzimuth);
+
+
+
+	// adding our own endpoints for the settings
+	m_AlpacaRestServer->use("/setup/reverseDirection", &reverseDirectionState);
+
+	m_AlpacaRestServer->use("/setup/useDHCP", &useDHCPState);
+	m_AlpacaRestServer->get("/setup/macAddress", &macAddressValue);
+	m_AlpacaRestServer->use("/setup/ipAddress", &ipAddressValue);
+	m_AlpacaRestServer->use("/setup/subnetMask", &subnetMaskValue);
+	m_AlpacaRestServer->use("/setup/ipGeteway", &ipGetewayValue);
+
+	m_AlpacaRestServer->use("/setup/roofCalibrate", &roofCalibrateAction);
+	m_AlpacaRestServer->use("/setup/stepPerOpen", &stepPerOpenValue);
+	m_AlpacaRestServer->use("/setup/roofSpeed", &roofSpeedValue);
+	m_AlpacaRestServer->use("/setup/roofAcceleration", &roofAccelerationValue);
+	m_AlpacaRestServer->put("/setup/restoreMotorSettings", &restoreMotorValues);
+	m_AlpacaRestServer->use("/setup/unsafeAction", &unsafeAction);
+	m_AlpacaRestServer->get("/setup/roofVoltage", &roofVoltageCutoffValue);
+	m_AlpacaRestServer->get("/setup/envCondition", &envConditionState);
 
 	DBPrintln("m_AlpacaRestServer started");
 }

@@ -165,7 +165,7 @@ private:
 	bool        LoadFromEEProm();
 	void        SetDefaultConfig();
 
-	std::atomic<bool>	m_bIsBadCondition;
+	std::atomic<bool>	m_bIsSafe;
 
 	bool        m_bDoEEPromSave;
 	// eeprom
@@ -224,10 +224,10 @@ RoofClass::RoofClass()
 	m_bDoEEPromSave = true;
 
 	if (digitalRead(COND_SENSOR_PIN) == LOW) {
-		m_bIsBadCondition = true;
+		m_bIsSafe = false;
 	}
 	else {
-		m_bIsBadCondition = false;
+		m_bIsSafe = true;
 	}
 
 	if(digitalRead(CLOSE_PIN) == LOW) {
@@ -317,10 +317,10 @@ void RoofClass::closedInterrupt()
 inline void RoofClass::conditionInterrupt()
 {
 	if (digitalRead(COND_SENSOR_PIN) == LOW) {
-		m_bIsBadCondition = true;
+		m_bIsSafe = false;
 	}
 	else
-		m_bIsBadCondition = false;
+		m_bIsSafe = true;
 }
 
 void RoofClass::SaveToEEProm()
@@ -467,12 +467,12 @@ String RoofClass::IpAddress2String(const IPAddress& ipAddress)
 bool RoofClass::GetConditionStatus()
 {
 	if (digitalRead(COND_SENSOR_PIN) == LOW) {
-		m_bIsBadCondition = true;
+		m_bIsSafe = false;
 	}
 	else
-		m_bIsBadCondition = false;
+		m_bIsSafe = true;
 
-	return m_bIsBadCondition;
+	return m_bIsSafe;
 }
 
 //

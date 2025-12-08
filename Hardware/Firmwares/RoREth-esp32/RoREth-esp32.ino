@@ -26,7 +26,11 @@ EventGroupHandle_t xEventGroup;
 #include <SPI.h>    // ESP32 :  SCK: GPIO18, SDO/TX: GPIO23, SDI: GPIO19, CS: GPIO5, Reset : GPIO29, Int : GPIO0
 #include <Ethernet.h>
 #include "EtherMac.h"
-uint32_t uidBuffer[4];  // Board unique ID
+#define ETHERNET_CS     5
+#define ETHERNET_INT	0
+#define ETHERNET_RESET  4
+#define CMD_SERVER_PORT 2323
+#define domeEthernet Ethernet
 byte MAC_Address[6];    // Mac address, uses part of the unique ID
 IPConfig ServerConfig;
 std::atomic<bool> ethernetPresent;
@@ -53,7 +57,7 @@ std::atomic<bool> bSentHello;
 
 std::atomic<bool> bShutterPresent;
 // global variable for conditon status
-std::atomic<bool> bIsBadCondition;
+std::atomic<bool> bIsSafe;
 // global variable for shutter voltage state
 std::atomic<bool> bLowShutterVoltage;
 
@@ -93,13 +97,12 @@ DomeAlpacaDiscoveryServer *AlpacaDiscoveryServer;
 #endif
 
 void MotorTask(void *);
-esp_task_wdt_config_t twdt_config =
-    {
-        .timeout_ms = 1000000,
-        .idle_core_mask = 0,    // Bitmask of cores
-        .trigger_panic = false,
-    };
-TaskHandle_t motorTaskHandle = nullptr;
+esp_task_wdt_config_t twdt_config = {
+	.timeout_ms = 1000000,
+	.idle_core_mask = 0,    // Bitmask of cores
+	.trigger_panic = false,
+};
+
 //
 // Setup and main loops
 //
@@ -108,7 +111,7 @@ void setup()
 	ethernetPresent = false;
 	bSentHello = false;
 	bShutterPresent = false;
-	bIsBadCondition = false;
+	bIsSafe = false;
 	bLowShutterVoltage = false;
 
 	nbEthernetClient = 0;
@@ -127,7 +130,7 @@ void setup()
 #endif // USE_ETHERNET
 
 #ifdef USE_ETHERNET
-	getMacAddress(MAC_Address, uidBuffer);
+	getMacAddress(MAC_Address);
 	DBPrintln("MAC : " + String(MAC_Address[0], HEX) + String(":") +
 					String(MAC_Address[1], HEX) + String(":") +
 					String(MAC_Address[2], HEX) + String(":") +
@@ -155,7 +158,7 @@ void setup()
 	esp_task_wdt_add(NULL);
 	disableCore0WDT();
 	disableCore1WDT();
-	xTaskCreatePinnedToCore(MotorTask, "MotorTask", 10000, NULL, 16, &motorTaskHandle,  0);
+	xTaskCreatePinnedToCore(MotorTask, "MotorTask", 10000, NULL, 16, NULL,  0);
 
 	domeServer = new EthernetServer(CMD_SERVER_PORT);
 	domeServer->begin();
@@ -188,7 +191,7 @@ void loop()
 	CheckForCommands();
 	CheckForCondition();
 	vTaskDelay(xDelay);
-	// taskYIELD();
+	taskYIELD();
 	esp_task_wdt_reset();
 }
 
@@ -197,9 +200,6 @@ void loop()
 //
 void MotorTask(void *)
 {
-	EventBits_t uxBits;
-	const TickType_t xDelay = 1 / portTICK_PERIOD_MS;
-	const TickType_t xTicksToWait = 100 / portTICK_PERIOD_MS;
 
 	DBPrintln("========== Motor task starting ==========");
 	DBPrintln("========== Motor task Attaching interrupt handler ==========");
@@ -211,32 +211,13 @@ void MotorTask(void *)
 
 	esp_task_wdt_add(NULL);
 	DBPrintln("========== Motor task ready ==========");
-
 	for(;;) {
-		uxBits = xEventGroupWaitBits(
-            xEventGroup,
-            MOTOR_EVENT_BIT,
-            pdTRUE,        // MOTOR_EVENT_BIT should be cleared before returning.
-            pdFALSE,
-            xTicksToWait ); // Wait a maximum of 100ms for the bit to be set. */
-
-		if( ( uxBits & MOTOR_EVENT_BIT ) != 0 ) {
-			Roof->Run();
-			if(Roof->isRunning()) {
-				xEventGroupSetBits(xEventGroup, MOTOR_EVENT_BIT);
-			}
-			else {
-				xEventGroupClearBits(xEventGroup, MOTOR_EVENT_BIT);
-			}
-		}
-		else {
-			// timeout
-		}
-		vTaskDelay(xDelay);
-		// taskYIELD();
+		Roof->Run();
+		taskYIELD();
 		esp_task_wdt_reset();
 	}
 }
+
 
 //
 //
@@ -389,8 +370,13 @@ void CheckForCondition()
 	String shutterMessage;
 
 	int nPosition, nParkPos;
-	if(bIsBadCondition != Roof->GetConditionStatus()) { // was there a state change ?
-		bIsBadCondition = Roof->GetConditionStatus();
+	if(bIsSafe != Roof->GetConditionStatus()) { // was there a state change ?
+		bIsSafe = Roof->GetConditionStatus();
+	}
+	if(!bIsSafe) {
+		// emergency close
+		// need to make sure mount is parked.
+		// might need to leave this to the app control for now.
 	}
 }
 
@@ -508,7 +494,7 @@ void ProcessCommand(int nSource)
 
 
 		case COND_ROOF:
-			serialMessage = String(COND_ROOF) + String(bIsBadCondition ? "1" : "0");
+			serialMessage = String(COND_ROOF) + String(bIsSafe ? "1" : "0");
 			break;
 
 #ifdef USE_ETHERNET
