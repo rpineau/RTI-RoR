@@ -22,16 +22,9 @@
 
 #define VERSION "2.645"
 #define MAX_TIMEOUT 10
-
-#define USE_EXT_EEPROM
-#define USE_ETHERNET
 #define USE_ALPACA
 
 #define Computer Serial     // USB = Serial
-
-#define I2C_WIRE    Wire
-#define EEPROM_ADDR 0x50
-#define I2C_CHUNK_SIZE  16
 
 //
 // ESP32 dev boards
@@ -89,15 +82,12 @@ Micro-steps per Stroke with original motor and 15.3:1 gearbox
 #define MIN_PULSE_WIDTH 5
 
 // used to offset the config location.. at some point.
-#define EEPROM_LOCATION     0  // not used with Arduino Due flash
-#define EEPROM_SIGNATURE    0001
+#define CONF_SIGNATURE    0001
 
-#ifdef USE_ETHERNET
 #define ETHERNET_CS     5
 #define ETHERNET_INT	0
 #define ETHERNET_RESET  4
 #define CMD_SERVER_PORT 2323
 #define domeEthernet Ethernet
-#endif
 
 #endif

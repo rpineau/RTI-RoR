@@ -16,11 +16,9 @@
 #include "config.h"
 
 // FreeRTOS stuff
-#define MOTOR_EVENT_BIT	( 1 << 0 )
 EventGroupHandle_t xEventGroup;
 
 
-#ifdef USE_ETHERNET
 #pragma message "Ethernet enabled"
 // include and some defines for ethernet connection
 #include <SPI.h>    // ESP32 :  SCK: GPIO18, SDO/TX: GPIO23, SDI: GPIO19, CS: GPIO5, Reset : GPIO29, Int : GPIO0
@@ -39,7 +37,6 @@ EthernetClient domeClient;
 int nbEthernetClient = 0;
 String networkBuffer = "";
 String sLocalIPAdress = "";
-#endif // USE_ETHERNET
 
 String computerBuffer = "";
 
@@ -66,26 +63,18 @@ const char ERR_NO_DATA = -1;
 #include "ror_commands.h"
 enum CmdSource {SERIAL_CMD, NETWORK_CMD};
 // function prototypes
-#ifdef USE_ETHERNET
 void configureEthernet();
-bool initEthernet(bool bUseDHCP, IPAddress ip, IPAddress dns, IPAddress gateway, IPAddress subnet, bool bReconfigure);
+bool initEthernet(bool bUseDHCP, IPAddress ip, IPAddress dns, IPAddress gateway, IPAddress subnetMask, bool bReconfigure);
 void checkForNewTCPClient();
-#endif // USE_ETHERNET
+
 void openIntHandler();
 void closeIntHandler();
 void conditionIntHandler();
 void buttonHandler();
 void resetChip(int);
-void StartWirelessConfig();
-void ConfigXBee();
-void setPANID(String);
-void SendHello();
-void requestShutterData();
 void CheckForCommands();
 void CheckForCondition();
-#ifdef USE_ETHERNET
 void ReceiveNetwork(EthernetClient client);
-#endif // USE_ETHERNET
 void ReceiveComputer();
 void ProcessCommand(int nSource);
 void Abort();
@@ -124,12 +113,8 @@ void setup()
 	DBPrintln("========== RTI-Zone controller booting ==========");
 #endif
 
-#ifdef USE_ETHERNET
 	digitalWrite(ETHERNET_RESET, 0);
 	pinMode(ETHERNET_RESET, OUTPUT);
-#endif // USE_ETHERNET
-
-#ifdef USE_ETHERNET
 	getMacAddress(MAC_Address);
 	DBPrintln("MAC : " + String(MAC_Address[0], HEX) + String(":") +
 					String(MAC_Address[1], HEX) + String(":") +
@@ -137,7 +122,6 @@ void setup()
 					String(MAC_Address[3], HEX) + String(":") +
 					String(MAC_Address[4], HEX) + String(":") +
 					String(MAC_Address[5], HEX) );
-#endif // USE_ETHERNET
 
 	Computer.begin(115200);
 	//Computer.begin(115200, SERIAL_8N1, 16, 17); // pins 16 rx2, 17 tx2, 115200 bps, 8 bits no parity 1 stop bit
@@ -147,11 +131,8 @@ void setup()
 	Roof->motorStop();
 	Roof->Stop();
 	Roof->EnableMotor(false);
-	xEventGroupClearBits(xEventGroup, MOTOR_EVENT_BIT);
 
-#ifdef USE_ETHERNET
 	configureEthernet();
-#endif // USE_ETHERNET
 	rtc_wdt_protect_off();
 	esp_task_wdt_deinit();
 	esp_task_wdt_init(&twdt_config);
@@ -180,13 +161,11 @@ void loop()
 {
 	const TickType_t xDelay = 1 / portTICK_PERIOD_MS;
 
-#ifdef USE_ETHERNET
 	if(ethernetPresent) {
 		checkForNewTCPClient();
 		AlpacaDiscoveryServer->checkForRequest();
 		AlpacaServer->checkForRequest();
 	}
-#endif //USE_ETHERNET
 
 	CheckForCommands();
 	CheckForCondition();
@@ -222,7 +201,6 @@ void MotorTask(void *)
 //
 //
 //
-#ifdef USE_ETHERNET
 void configureEthernet()
 {
         DBPrintln("========== Configuring Ethernet ==========");
@@ -231,11 +209,11 @@ void configureEthernet()
 										ServerConfig.ip,
 										ServerConfig.dns,
 										ServerConfig.gateway,
-										ServerConfig.subnet);
+										ServerConfig.subnetMask);
 }
 
 
-bool initEthernet(bool bUseDHCP, IPAddress ip, IPAddress dns, IPAddress gateway, IPAddress subnet)
+bool initEthernet(bool bUseDHCP, IPAddress ip, IPAddress dns, IPAddress gateway, IPAddress subnetMask)
 {
 	bool bDhcpOk;
 	int nTimeout = 0;
@@ -260,7 +238,7 @@ bool initEthernet(bool bUseDHCP, IPAddress ip, IPAddress dns, IPAddress gateway,
 		if(!bDhcpOk) {
 			DBPrintln("DHCP Failed!");
 			if(domeEthernet.linkStatus() == LinkON ) {
-				domeEthernet.begin(MAC_Address, ip, dns, gateway, subnet);
+				domeEthernet.begin(MAC_Address, ip, dns, gateway, subnetMask);
 			}
 			else {
 				DBPrintln("No cable");
@@ -269,7 +247,7 @@ bool initEthernet(bool bUseDHCP, IPAddress ip, IPAddress dns, IPAddress gateway,
 		}
 	}
 	else {
-		domeEthernet.begin(MAC_Address, ip, dns, gateway, subnet);
+		domeEthernet.begin(MAC_Address, ip, dns, gateway, subnetMask);
 	}
 
 	DBPrintln("========== Checking hardware status ==========");
@@ -318,7 +296,6 @@ void checkForNewTCPClient()
 		DBPrintln("nb client = " + String(nbEthernetClient));
 	}
 }
-#endif // USE_ETHERNET
 
 void IRAM_ATTR openIntHandler()
 {
@@ -357,12 +334,9 @@ void resetChip(int nPin)
 void CheckForCommands()
 {
 	ReceiveComputer();
-
-#ifdef USE_ETHERNET
 	if(ethernetPresent ) {
 		ReceiveNetwork(domeClient);
 	}
-#endif // USE_ETHERNET
 }
 
 void CheckForCondition()
@@ -381,7 +355,6 @@ void CheckForCondition()
 }
 
 
-#ifdef USE_ETHERNET
 void ReceiveNetwork(EthernetClient client)
 {
 	char networkCharacter;
@@ -410,7 +383,6 @@ void ReceiveNetwork(EthernetClient client)
 		}
 	}
 }
-#endif // USE_ETHERNET
 
 // All comms are terminated with '#' but the '\r' and '\n' are for debugging
 void ReceiveComputer()
@@ -458,13 +430,11 @@ void ProcessCommand(int nSource)
 			// Payload
 			value = computerBuffer.substring(1);
 			break;
-#ifdef USE_ETHERNET
 		case NETWORK_CMD:
 			command = networkBuffer.charAt(0);
 			// Payload
 			value = networkBuffer.substring(1);
 			break;
-#endif
 	}
 
 	// payload has data
@@ -488,7 +458,6 @@ void ProcessCommand(int nSource)
 
 		case CALIBRATE_ROOF:
 			Roof->StartCalibrating();
-			xEventGroupSetBits(xEventGroup, MOTOR_EVENT_BIT);
 			serialMessage = String(CALIBRATE_ROOF);
 			break;
 
@@ -497,7 +466,6 @@ void ProcessCommand(int nSource)
 			serialMessage = String(COND_ROOF) + String(bIsSafe ? "1" : "0");
 			break;
 
-#ifdef USE_ETHERNET
 		case ETH_RECONFIG :
 			if(nbEthernetClient > 0) {
 				domeClient.stop();
@@ -542,11 +510,11 @@ void ProcessCommand(int nSource)
 
 		case IP_SUBNET:
 			if (hasValue) {
-				Roof->setIPSubnet(value);
+				Roof->setIPSubnetMask(value);
 				Roof->getIpConfig(ServerConfig);
 			}
 			if(!ServerConfig.bUseDHCP)
-				serialMessage = String(IP_SUBNET) + String(Roof->getIPSubnet());
+				serialMessage = String(IP_SUBNET) + String(Roof->getIPSubnetMask());
 			else {
 				serialMessage = String(IP_SUBNET) + String(RoofClass::IpAddress2String(domeEthernet.subnetMask()));
 			}
@@ -563,8 +531,6 @@ void ProcessCommand(int nSource)
 				serialMessage = String(IP_GATEWAY) + String(RoofClass::IpAddress2String(domeEthernet.gatewayIP()));
 			}
 			break;
-#endif // USE_ETHERNET
-
 
 		case ACCELERATION_ROOF:
 			if (hasValue) {
@@ -577,7 +543,6 @@ void ProcessCommand(int nSource)
 			sTmpString = String(CLOSE_ROOF);
 			serialMessage = sTmpString;
 			Roof->Close();
-			xEventGroupSetBits(xEventGroup, MOTOR_EVENT_BIT);
 			break;
 
 		case ROOF_RESTORE_MOTOR_DEFAULT :
@@ -591,7 +556,6 @@ void ProcessCommand(int nSource)
 				serialMessage += "L";
 			else {
 				Roof->Open();
-				xEventGroupSetBits(xEventGroup, MOTOR_EVENT_BIT);
 			}
 			break;
 
@@ -644,7 +608,6 @@ void ProcessCommand(int nSource)
 					Computer.write(serialMessage .c_str(), serialMessage.length());
 				}
 				break;
-	#ifdef USE_ETHERNET
 			case NETWORK_CMD:
 				if(domeClient.connected()) {
 					DBPrintln("Network serialMessage = " + serialMessage);
@@ -652,7 +615,6 @@ void ProcessCommand(int nSource)
 					domeClient.flush();
 				}
 				break;
-	#endif
 		}
 	}
 }
@@ -663,6 +625,5 @@ void Abort()
 	String shutterMessage;
 	if(Roof) {
 		Roof->Stop();
-		xEventGroupClearBits(xEventGroup, MOTOR_EVENT_BIT);
 	}
 }

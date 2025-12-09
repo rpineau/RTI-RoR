@@ -1520,7 +1520,7 @@ void subnetMaskValue(Request &req, Response &res)
 		}
 		else {
 			if(FormData["value"].is<String>()) {
-				Roof->setIPSubnet(FormData["value"]);
+				Roof->setIPSubnetMask(FormData["value"]);
 			}
 		}
 	}
