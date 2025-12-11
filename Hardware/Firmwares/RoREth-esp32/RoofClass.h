@@ -23,7 +23,6 @@ typedef struct IPCONFIG {
 
 
 typedef struct RoofConfiguration {
-	int             signature;
 	long            stepsPerStroke;
 	long			openPos;
 	long            acceleration;
@@ -153,8 +152,6 @@ private:
 
 	// Utility
 	bool 		LoadConfig();
-	void        SetDefaultConfig();
-
 	std::atomic<bool>	m_bIsSafe;
 	bool	m_bDoSave;
 };
@@ -306,28 +303,18 @@ bool RoofClass::LoadConfig()
 	bool response = true;
 
 	DBPrintln("RoofClass::LoadConfig");
-	m_Config.signature = m_preferences.getInt("signature",0);
-	DBPrintln("expected signature : " + String(CONF_SIGNATURE));
-	DBPrintln("m_Config.signature : " + String(m_Config.signature));
-	if (m_Config.signature != CONF_SIGNATURE) {
-		DBPrintln("Setting default value for new signature");
-		SetDefaultConfig();
-		response = false;
-	}
-	else {
-		m_Config.stepsPerStroke = m_preferences.getLong("stepsPerStroke",0);
-		m_Config.openPos = m_preferences.getLong("openPos",0);
-		m_Config.acceleration = m_preferences.getLong("acceleration",0);
-		m_Config.maxSpeed = m_preferences.getLong("maxSpeed",0);
-		m_Config.reversed = m_preferences.getBool("reverse", false);
-		m_Config.cutOffVolts = m_preferences.getInt("cutOffVolts",1200);
+	m_Config.stepsPerStroke = m_preferences.getLong("stepsPerStroke",STEPS_DEFAULT);
+	m_Config.openPos = m_preferences.getLong("openPos",160000000L);
+	m_Config.acceleration = m_preferences.getLong("acceleration",ACCELERATION);
+	m_Config.maxSpeed = m_preferences.getLong("maxSpeed",MAX_SPEED);
+	m_Config.reversed = m_preferences.getBool("reverse", false);
+	m_Config.cutOffVolts = m_preferences.getInt("cutOffVolts",1150);
 
-		m_Config.ipConfig.bUseDHCP = m_preferences.getBool("bUseDHCP", true);
-		m_Config.ipConfig.ip.fromString(m_preferences.getString("ip","192.168.0.99"));
-		m_Config.ipConfig.dns.fromString(m_preferences.getString("dns","192.168.0.1"));
-		m_Config.ipConfig.gateway.fromString(m_preferences.getString("gateway","192.168.0.1"));
-		m_Config.ipConfig.subnetMask.fromString(m_preferences.getString("subnetMask","255.255.255.0"));
-	}
+	m_Config.ipConfig.bUseDHCP = m_preferences.getBool("bUseDHCP", true);
+	m_Config.ipConfig.ip.fromString(m_preferences.getString("ip","192.168.0.99"));
+	m_Config.ipConfig.dns.fromString(m_preferences.getString("dns","192.168.0.1"));
+	m_Config.ipConfig.gateway.fromString(m_preferences.getString("gateway","192.168.0.1"));
+	m_Config.ipConfig.subnetMask.fromString(m_preferences.getString("subnetMask","255.255.255.0"));
 
 	DBPrintln("maxSpeed          : " + String(m_Config.maxSpeed));
 	DBPrintln("acceleration      : " + String(m_Config.acceleration));
@@ -341,40 +328,6 @@ bool RoofClass::LoadConfig()
 	DBPrintln("ipConfig.gateway  : " + IpAddress2String(m_Config.ipConfig.gateway));
 	DBPrintln("ipConfig.subnetMask   : " + IpAddress2String(m_Config.ipConfig.subnetMask));
 	return response;
-}
-
-void RoofClass::SetDefaultConfig()
-{
-	memset(&m_Config, 0, sizeof(Configuration));
-
-	m_Config.signature = CONF_SIGNATURE;
-	m_Config.stepsPerStroke = STEPS_DEFAULT;
-	m_Config.openPos = 160000000L;
-	m_Config.acceleration = ACCELERATION;
-	m_Config.maxSpeed = MAX_SPEED;
-	m_Config.reversed = 0;
-	m_Config.cutOffVolts = 1150;
-
-	m_Config.ipConfig.bUseDHCP = true;
-	m_Config.ipConfig.ip.fromString("192.168.0.99");
-	m_Config.ipConfig.dns.fromString("192.168.0.1");
-	m_Config.ipConfig.gateway.fromString("192.168.0.1");
-	m_Config.ipConfig.subnetMask.fromString("255.255.255.0");
-
-	// save all pref to lvs
-	m_preferences.putInt("signature",m_Config.signature);
-	m_preferences.putLong("stepsPerStroke",m_Config.stepsPerStroke);
-	m_preferences.putLong("openPos",m_Config.openPos);
-	m_preferences.putLong("acceleration",m_Config.acceleration);
-	m_preferences.putLong("maxSpeed",m_Config.maxSpeed);
-	m_preferences.putBool("reversed",m_Config.reversed);
-	m_preferences.putInt("cutOffVolts",m_Config.cutOffVolts);
-
-	m_preferences.putBool("bUseDHCP",m_Config.ipConfig.bUseDHCP);
-	m_preferences.putString("ip","192.168.0.99");
-	m_preferences.putString("dns","192.168.0.1");
-	m_preferences.putString("gateway","192.168.0.1");
-	m_preferences.putString("subnetMask","255.255.255.0");
 }
 
 void RoofClass::getIpConfig(IPConfig &config)
@@ -880,4 +833,3 @@ void RoofClass::motorMoveRelative(const long howFar)
 	EnableMotor(true);
 	stepper.move(howFar);
 }
-

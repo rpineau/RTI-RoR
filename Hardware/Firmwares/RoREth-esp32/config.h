@@ -21,9 +21,7 @@
 #endif // DEBUG
 
 #define VERSION "2.645"
-#define MAX_TIMEOUT 10
 #define USE_ALPACA
-
 #define Computer Serial     // USB = Serial
 
 //
@@ -71,18 +69,12 @@ Micro-steps per Stroke with original motor and 15.3:1 gearbox
 	NexDome 2m      : 440640
 	Explora-Dome 8' : 479800
 */
-
 #define STEPS_DEFAULT       440640
 
 // DM556T stepper controller min pulse width  = 2.5uS
-// #define MIN_PULSE_WIDTH 3
-
 // ISD02/04/08 stepper controller min pulse width = 5uS at 1600rev/s (8 microsteps).
 // TB6600 Stepper controller min pulse width = 5uS
 #define MIN_PULSE_WIDTH 5
-
-// used to offset the config location.. at some point.
-#define CONF_SIGNATURE    0001
 
 #define ETHERNET_CS     5
 #define ETHERNET_INT	0
