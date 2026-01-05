@@ -5,7 +5,6 @@
 //
 
 #pragma message "Alpaca server enabled"
-#include <atomic>
 #include <vector>
 #include <functional>
 #include <EthernetUdp.h>
@@ -1574,7 +1573,7 @@ void roofCalibrateAction(Request &req, Response &res)
 					Roof->StartCalibrating();
 				}
 				if(FormData["value"] == "abort") {
-					Roof->Stop();
+					Roof->motorStop();
 				}
 			}
 		}

@@ -6,8 +6,9 @@
 //
 
 #include <atomic>
-#include <AccelStepper.h>
 #include <Preferences.h>
+#include <FastAccelStepper.h>
+#include <nvs_flash.h>
 
 #include "StopWatch.h"
 #include "config.h"
@@ -36,7 +37,8 @@ typedef struct RoofConfiguration {
 
 enum RoofStates { OPEN, CLOSED, NOT_MOVING, OPENING, CLOSING, ROOF_ERROR, FINISHING_OPENING, FINISHING_CLOSING, CALIBRATION_STEP_RESET, CALIBRATION_STEP_OPENING, CALIBRATION_STEP_OPEN, CALIBRATION_MEASURE};
 
-AccelStepper stepper(AccelStepper::DRIVER, STEP_PIN, DIRECTION_PIN);
+FastAccelStepperEngine engine = FastAccelStepperEngine();
+FastAccelStepper *stepper = NULL;
 
 
 class RoofClass
@@ -87,10 +89,8 @@ public:
 	void        Calibrate();
 
 	// Movers
-	void        EnableMotor(const bool);
 	void        MoveRelative(const long steps);
 	void        Run();
-	void        Stop();
 	void        motorStop();
 	void		Open();
 	void		Close();
@@ -112,7 +112,6 @@ public:
 #ifdef USE_WIFI
 	void		getWiFiConfig(WIFIConfig &config);
 #endif // USE_WIFI
-	std::atomic<int>    nStepperInterruptFreq;
 
 	static String IpAddress2String(const IPAddress& ipAddress);
 
@@ -124,16 +123,17 @@ public:
 private:
 	Configuration   m_Config;
 	Preferences 	m_preferences;
-	// Rotator
+	// Roof movement
 	bool            m_bWasRunning;
 	int				m_nRoofState;
 	bool            m_bDoStepsPerStroke;
 
+	StopWatch       m_MoveOffUntilTimer;
 	unsigned long   m_nMOVE_OFFUntilLapse = 2000;
-	int             m_nMoveDirection;
 
-	std::atomic<long>	m_nStepsAtOpen;
-	std::atomic<long>	m_nHomePosEdgePass1;
+	int             m_nMoveDirection;
+	volatile long	m_nStepsAtOpen;
+	volatile long	m_nHomePosEdgePass1;
 	volatile 	long	m_nHomePosEdgePass2;
 
 	// fake function varialbles.
@@ -151,8 +151,8 @@ private:
 
 
 	// Utility
-	bool 		LoadConfig();
-	std::atomic<bool>	m_bIsSafe;
+	void 		LoadConfig();
+	volatile bool	m_bIsSafe;
 	bool	m_bDoSave;
 };
 
@@ -160,8 +160,6 @@ private:
 
 RoofClass::RoofClass()
 {
-
-	m_preferences.begin("RTI_RoR", false);
 
 	m_nRoofState = NOT_MOVING;
 	m_bWasRunning = false;
@@ -188,14 +186,17 @@ RoofClass::RoofClass()
 
 	LoadConfig();
 	m_bDoSave = false;  // we just read the config, no need to resave all the value we're setting
+
+	engine.init();
+	stepper = engine.stepperConnectToPin(STEP_PIN);
+	stepper->setEnablePin(STEPPER_ENABLE_PIN);
+	stepper->setAutoEnable(true);
+
 	SetMaxSpeed(m_Config.maxSpeed);
 	SetAcceleration(m_Config.acceleration);
 	SetStepsPerStroke(m_Config.stepsPerStroke);
 	SetReversed(m_Config.reversed);
 	m_bDoSave = true;
-
-	// set pulse width
-	stepper.setMinPulseWidth(MIN_PULSE_WIDTH); // 5uS to test. Default in the source seems to be set to 1 ...
 
 	if (digitalRead(COND_SENSOR_PIN) == LOW) {
 		m_bIsSafe = false;
@@ -218,9 +219,6 @@ RoofClass::RoofClass()
 
 	m_fAdcConvert = RES_MULT * (AD_REF / 1023.0) * 100;
 
-
-	nStepperInterruptFreq = 0; // used to pass interrupt frequency to core1 from call to methods from core0
-
 	// reset all timers
 	m_periodicReadingTimer.reset();
 }
@@ -233,7 +231,7 @@ void RoofClass::openInterrupt()
 	if (digitalRead(OPEN_PIN) != LOW)
 		return;
 
-	nPos = stepper.currentPosition(); // read position immediately
+	nPos = stepper->getCurrentPosition(); // read position immediately
 
 	switch(m_nRoofState) {
 
@@ -266,7 +264,7 @@ void RoofClass::closedInterrupt()
 	if (digitalRead(CLOSE_PIN) != LOW)
 		return;
 
-	nPos = stepper.currentPosition(); // read position immediately
+	nPos = stepper->getCurrentPosition(); // read position immediately
 
 	switch(m_nRoofState) {
 		case CLOSING: // stop and take note of where we are so we can reverse.
@@ -298,11 +296,23 @@ inline void RoofClass::conditionInterrupt()
 }
 
 
-bool RoofClass::LoadConfig()
+void RoofClass::LoadConfig()
 {
-	bool response = true;
+	bool nvsInitDone = false;
 
 	DBPrintln("RoofClass::LoadConfig");
+	m_preferences.begin("RTI_RoR", false);
+	nvsInitDone = m_preferences.isKey("nvsInit");
+	if(!nvsInitDone) {
+		DBPrintln("Initializing NVS");
+		m_preferences.end();
+		nvs_flash_erase();
+		nvs_flash_init();
+		m_preferences.begin("RTI_RoR", false);
+		m_preferences.putBool("nvsInit", true);
+
+	}
+
 	m_Config.stepsPerStroke = m_preferences.getLong("stepsPerStroke",STEPS_DEFAULT);
 	m_Config.openPos = m_preferences.getLong("openPos",160000000L);
 	m_Config.acceleration = m_preferences.getLong("acceleration",ACCELERATION);
@@ -327,7 +337,8 @@ bool RoofClass::LoadConfig()
 	DBPrintln("ipConfig.dns      : " + IpAddress2String(m_Config.ipConfig.dns));
 	DBPrintln("ipConfig.gateway  : " + IpAddress2String(m_Config.ipConfig.gateway));
 	DBPrintln("ipConfig.subnetMask   : " + IpAddress2String(m_Config.ipConfig.subnetMask));
-	return response;
+
+	m_preferences.end();
 }
 
 void RoofClass::getIpConfig(IPConfig &config)
@@ -451,9 +462,12 @@ long RoofClass::GetAcceleration()
 void RoofClass::SetAcceleration(const long newAccel)
 {
 	m_Config.acceleration = newAccel;
-	stepper.setAcceleration(double(newAccel));
-	if(m_bDoSave)
+	stepper->setAcceleration(m_Config.acceleration);    //  steps/s²
+	if(m_bDoSave) {
+		m_preferences.begin("RTI_RoR", false);
 		m_preferences.putLong("acceleration", newAccel);
+		m_preferences.end();
+	}
 }
 
 long RoofClass::GetMaxSpeed()
@@ -464,9 +478,12 @@ long RoofClass::GetMaxSpeed()
 void RoofClass::SetMaxSpeed(const long newSpeed)
 {
 	m_Config.maxSpeed = newSpeed;
-	stepper.setMaxSpeed(double(newSpeed));
-	if(m_bDoSave)
+	stepper->setSpeedInHz(m_Config.maxSpeed);  //  steps/s
+	if(m_bDoSave) {
+		m_preferences.begin("RTI_RoR", false);
 		m_preferences.putLong("maxSpeed", newSpeed);
+		m_preferences.end();
+	}
 }
 
 long RoofClass::getOpenPosition()
@@ -477,7 +494,7 @@ long RoofClass::getOpenPosition()
 long RoofClass::GetPosition()
 {
 	long position;
-	position = stepper.currentPosition();
+	position = stepper->getCurrentPosition();
 #pragma message "FixMe"
 /*	if (m_nRoofState < CALIBRATION_MOVE_OFF) {
 		while (position >= m_Config.stepsPerStroke)
@@ -499,9 +516,12 @@ bool RoofClass::GetReversed()
 void RoofClass::SetReversed(const bool isReversed)
 {
 	m_Config.reversed = isReversed;
-	stepper.setPinsInverted(isReversed, isReversed, isReversed);
-	if(m_bDoSave)
+	stepper->setDirectionPin(DIRECTION_PIN,(!isReversed));
+	if(m_bDoSave) {
+		m_preferences.begin("RTI_RoR", false);
 		m_preferences.putBool("reversed", isReversed);
+		m_preferences.end();
+	}
 }
 
 int RoofClass::GetDirection()
@@ -519,18 +539,18 @@ void RoofClass::SetStepsPerStroke(const long newCount)
 #pragma message "FixMe"
 	// m_fStepsPerDegree = (double)newCount / 360.0;
 	m_Config.stepsPerStroke = newCount;
-	if(m_bDoSave)
-		m_preferences.putBool("stepsPerStroke", newCount);
+	if(m_bDoSave) {
+		m_preferences.begin("RTI_RoR", false);
+		m_preferences.putLong("stepsPerStroke", newCount);
+		m_preferences.end();
+	}
 }
 
 void RoofClass::restoreDefaultMotorSettings()
 {
-	m_Config.maxSpeed = MAX_SPEED;
-	m_Config.acceleration = ACCELERATION;
-	m_Config.stepsPerStroke = STEPS_DEFAULT;
-	SetMaxSpeed(m_Config.maxSpeed);
-	SetAcceleration(m_Config.acceleration);
-	SetStepsPerStroke(m_Config.stepsPerStroke);
+	SetMaxSpeed(MAX_SPEED);
+	SetAcceleration(ACCELERATION);
+	SetStepsPerStroke(STEPS_DEFAULT);
 }
 
 
@@ -584,6 +604,7 @@ void RoofClass::StartCalibrating()
 
 	if (digitalRead(CLOSE_PIN) == 0) {
 		m_nRoofState = CLOSED;
+		m_MoveOffUntilTimer.reset();
 	}
 	if (digitalRead(OPEN_PIN) == 0) {
 		m_nRoofState = OPEN;
@@ -595,10 +616,12 @@ void RoofClass::StartCalibrating()
 		m_nRoofState = CALIBRATION_STEP_RESET;
 	}
 	else {
-		stepper.setCurrentPosition(0);
+		stepper->setCurrentPosition(0);
 		m_nRoofState = CALIBRATION_STEP_OPENING;
 		MoveRelative(160000000L); // move toward open position
 	}
+
+	m_MoveOffUntilTimer.reset();
 	m_bDoStepsPerStroke = false;
 }
 
@@ -608,9 +631,11 @@ void RoofClass::Calibrate()
 
 	switch (m_nRoofState) {
 		case(CALIBRATION_STEP_RESET):
-			if (!stepper.isRunning()) {
+			if(m_MoveOffUntilTimer.elapsed() <= m_nMOVE_OFFUntilLapse)
+				break;
+			if (!stepper->isRunning()) {
 				m_nRoofState = CALIBRATION_STEP_OPENING;
-				stepper.setCurrentPosition(0);
+				stepper->setCurrentPosition(0);
 				MoveRelative(160000000L);
 			}
 			break;
@@ -620,8 +645,8 @@ void RoofClass::Calibrate()
 			break;
 
 		case(CALIBRATION_MEASURE):
-			if (!stepper.isRunning()) { // we have to wait for it to have stopped
-				SetStepsPerStroke(stepper.currentPosition());
+			if (!stepper->isRunning()) { // we have to wait for it to have stopped
+				SetStepsPerStroke(stepper->getCurrentPosition());
 			}
 			break;
 		default:
@@ -633,18 +658,6 @@ void RoofClass::Calibrate()
 //
 // Movers
 //
-void RoofClass::EnableMotor(const bool bEnabled)
-{
-	if (!bEnabled) {
-		DBPrintln("Motor OFF");
-		digitalWrite(STEPPER_ENABLE_PIN, M_DISABLE);
-	}
-	else {
-		DBPrintln("Motor ON");
-		digitalWrite(STEPPER_ENABLE_PIN, M_ENABLE);
-	}
-
-}
 
 void RoofClass::MoveRelative(const long howFar)
 {
@@ -666,7 +679,7 @@ void RoofClass::GotoPosition(const long nPos)
 	double position;
 	double delta;
 
-	position = stepper.currentPosition();
+	position = stepper->getCurrentPosition();
 	delta = nPos - position;
 	MoveRelative(delta);
 }
@@ -708,7 +721,7 @@ void RoofClass::ButtonCheck()
 		MoveRelative(-160000000L);
 	}
 	else {
-		Stop();
+		motorStop();
 	}
 }
 
@@ -733,12 +746,10 @@ void RoofClass::Run()
 	if (m_nRoofState >= CALIBRATION_STEP_RESET)
 		Calibrate();
 
-	stepper.run(); // on Core 1
-
-	if (stepper.isRunning()) {
+	if (stepper->isRunning()) {
 		m_bWasRunning = true;
 		if (m_nRoofState == CALIBRATION_STEP_OPENING && m_nRoofState == OPEN) {
-			Stop();
+			motorStop();
 			m_nRoofState = CALIBRATION_STEP_OPEN;
 			return;
 		}
@@ -754,7 +765,7 @@ void RoofClass::Run()
 	if (m_bDoStepsPerStroke) {
 		m_bDoStepsPerStroke = false;
 		// we count from close, close is 0, full open is the current position
-		position = stepper.currentPosition();
+		position = stepper->getCurrentPosition();
 		SetStepsPerStroke(position);
 		m_preferences.putLong("stepsPerStroke", position);
 	}
@@ -763,7 +774,6 @@ void RoofClass::Run()
 		if( m_nRoofState == NOT_MOVING) {
 			// not moving anymore ..
 			m_nMoveDirection = MOVE_NONE;
-			EnableMotor(false);
 			m_bWasRunning = false;
 			// check if we stopped on the close sensor
 			if(digitalRead(CLOSE_PIN) == LOW) {
@@ -774,7 +784,7 @@ void RoofClass::Run()
 				// we're at the open position
 				m_nRoofState = OPEN;
 			}
-			position = stepper.currentPosition();
+			position = stepper->getCurrentPosition();
 		}
 
 		if(m_nRoofState == FINISHING_CLOSING) {
@@ -803,33 +813,20 @@ void RoofClass::Run()
 
 		if(m_nRoofState == NOT_MOVING) {
 			m_nMoveDirection = MOVE_NONE;
-			EnableMotor(false);
-			position = stepper.currentPosition();
+			position = stepper->getCurrentPosition();
 		}
 
 	} // end if (m_bWasRunning)
 }
 
-void RoofClass::Stop()
-{
-	if (!stepper.isRunning())
-		return;
-
-	m_nRoofState = NOT_MOVING;
-	motorStop();
-}
-
-
-
 void RoofClass::motorStop()
 {
-	stepper.stop();
+		stepper->stopMove();
 }
 
 
 void RoofClass::motorMoveRelative(const long howFar)
 {
 	DBPrintln("motorMoveRelative");
-	EnableMotor(true);
-	stepper.move(howFar);
+	stepper->move(howFar);
 }

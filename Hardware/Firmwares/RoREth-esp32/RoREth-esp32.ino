@@ -11,9 +11,8 @@
 #include "Arduino.h"
 #include <rtc_wdt.h>
 #include <esp_task_wdt.h>
-#include <atomic>
-#include "RoofClass.h"
 #include "config.h"
+#include "RoofClass.h"
 
 // FreeRTOS stuff
 EventGroupHandle_t xEventGroup;
@@ -31,7 +30,7 @@ EventGroupHandle_t xEventGroup;
 #define domeEthernet Ethernet
 byte MAC_Address[6];    // Mac address, uses part of the unique ID
 IPConfig ServerConfig;
-std::atomic<bool> ethernetPresent;
+volatile bool ethernetPresent;
 EthernetServer *domeServer = nullptr;
 EthernetClient domeClient;
 int nbEthernetClient = 0;
@@ -49,14 +48,14 @@ static const unsigned long pingInterval = 5000; // 5 seconds, can't be changed w
 // Once booting is done and XBee is ready, broadcast a hello message
 // so a shutter knows you're around if it is already running. If not,
 // the shutter will send a hello when it boots.
-std::atomic<bool> bSentHello;
+volatile bool bSentHello;
 
 
-std::atomic<bool> bShutterPresent;
+volatile bool bShutterPresent;
 // global variable for conditon status
-std::atomic<bool> bIsSafe;
+volatile bool bIsSafe;
 // global variable for shutter voltage state
-std::atomic<bool> bLowShutterVoltage;
+volatile bool bLowShutterVoltage;
 
 const char ERR_NO_DATA = -1;
 
@@ -129,8 +128,6 @@ void setup()
 
 	Roof = new RoofClass();
 	Roof->motorStop();
-	Roof->Stop();
-	Roof->EnableMotor(false);
 
 	configureEthernet();
 	rtc_wdt_protect_off();
@@ -624,6 +621,6 @@ void Abort()
 {
 	String shutterMessage;
 	if(Roof) {
-		Roof->Stop();
+		Roof->motorStop();
 	}
 }
