@@ -5,7 +5,6 @@
 //
 //
 
-#include <atomic>
 #include <Preferences.h>
 #include <FastAccelStepper.h>
 #include <nvs_flash.h>
@@ -68,7 +67,7 @@ public:
 	int         GetDirection();
 
 	long        GetStepsPerStroke();
-	void        SetStepsPerStroke(const long);
+	void        SetStepsPerStroke(const long, bool bSave = true);
 
 	long		getOpenPosition();
 
@@ -94,6 +93,7 @@ public:
 	void        motorStop();
 	void		Open();
 	void		Close();
+	void		Stop();
 	void        motorMoveRelative(const long howFar);
 	void		GotoPosition(const long nPos);
 	bool		isRunning();
@@ -108,6 +108,9 @@ public:
 	void        setIPSubnetMask(String ipSubnetMask);
 	String      getIPGateway();
 	void        setIPGateway(String ipGateway);
+	void		resetNetworkToDefaults();
+
+	void		resetAlltoDefault();
 
 #ifdef USE_WIFI
 	void		getWiFiConfig(WIFIConfig &config);
@@ -153,7 +156,6 @@ private:
 	// Utility
 	void 		LoadConfig();
 	volatile bool	m_bIsSafe;
-	bool	m_bDoSave;
 };
 
 
@@ -185,18 +187,15 @@ RoofClass::RoofClass()
 	pinMode(SPARE_OUT2,     		OUTPUT);
 
 	LoadConfig();
-	m_bDoSave = false;  // we just read the config, no need to resave all the value we're setting
 
 	engine.init();
 	stepper = engine.stepperConnectToPin(STEP_PIN);
+	stepper->setDirectionPin(DIRECTION_PIN,(!m_Config.reversed));
 	stepper->setEnablePin(STEPPER_ENABLE_PIN);
 	stepper->setAutoEnable(true);
-
-	SetMaxSpeed(m_Config.maxSpeed);
-	SetAcceleration(m_Config.acceleration);
-	SetStepsPerStroke(m_Config.stepsPerStroke);
-	SetReversed(m_Config.reversed);
-	m_bDoSave = true;
+	stepper->setSpeedInHz(m_Config.maxSpeed);  //  steps/s
+	stepper->setAcceleration(m_Config.acceleration);    //  steps/s²
+	SetStepsPerStroke(m_Config.stepsPerStroke, false);
 
 	if (digitalRead(COND_SENSOR_PIN) == LOW) {
 		m_bIsSafe = false;
@@ -310,8 +309,19 @@ void RoofClass::LoadConfig()
 		nvs_flash_init();
 		m_preferences.begin("RTI_RoR", false);
 		m_preferences.putBool("nvsInit", true);
-
 	}
+	m_Config.stepsPerStroke = m_preferences.getLong("stepsPerStroke",0);
+	m_Config.openPos = m_preferences.getLong("openPos",0);
+	m_Config.acceleration = m_preferences.getLong("acceleration",0);
+	m_Config.maxSpeed = m_preferences.getLong("maxSpeed",0);
+	m_Config.reversed = m_preferences.getBool("reverse", false);
+	m_Config.cutOffVolts = m_preferences.getInt("cutOffVolts",1200);
+
+	m_Config.ipConfig.bUseDHCP = m_preferences.getBool("bUseDHCP", true);
+	m_Config.ipConfig.ip.fromString(m_preferences.getString("ip","192.168.0.99"));
+	m_Config.ipConfig.dns.fromString(m_preferences.getString("dns","192.168.0.1"));
+	m_Config.ipConfig.gateway.fromString(m_preferences.getString("gateway","192.168.0.1"));
+	m_Config.ipConfig.subnetMask.fromString(m_preferences.getString("subnetMask","255.255.255.0"));
 
 	m_Config.stepsPerStroke = m_preferences.getLong("stepsPerStroke",STEPS_DEFAULT);
 	m_Config.openPos = m_preferences.getLong("openPos",160000000L);
@@ -337,8 +347,20 @@ void RoofClass::LoadConfig()
 	DBPrintln("ipConfig.dns      : " + IpAddress2String(m_Config.ipConfig.dns));
 	DBPrintln("ipConfig.gateway  : " + IpAddress2String(m_Config.ipConfig.gateway));
 	DBPrintln("ipConfig.subnetMask   : " + IpAddress2String(m_Config.ipConfig.subnetMask));
-
 	m_preferences.end();
+}
+
+void RoofClass::resetAlltoDefault()
+{
+	DBPrintln("Resetting do factory defaults");
+	DBPrintln("Initializing NVS");
+	m_preferences.end();
+	nvs_flash_erase();
+	nvs_flash_init();
+	m_preferences.begin("RTI_RoR", false);
+	m_preferences.putBool("nvsInit", true);
+	m_preferences.end();
+	ESP.restart();
 }
 
 void RoofClass::getIpConfig(IPConfig &config)
@@ -360,7 +382,9 @@ void RoofClass::setDHCPFlag(bool bUseDHCP)
 {
 	m_Config.ipConfig.bUseDHCP = bUseDHCP;
 	DBPrintln("New bUseDHCP : " + bUseDHCP?"Yes":"No");
+	m_preferences.begin("RTI_RoR", false);
 	m_preferences.putBool("bUseDHCP", bUseDHCP);
+	m_preferences.end();
 }
 
 String RoofClass::getIPAddress()
@@ -372,7 +396,9 @@ void RoofClass::setIPAddress(String ipAddress)
 {
 	m_Config.ipConfig.ip.fromString(ipAddress);
 	DBPrintln("New IP address : " + ipAddress);
+	m_preferences.begin("RTI_RoR", false);
 	m_preferences.putString("ip", ipAddress);
+	m_preferences.end();
 }
 
 String RoofClass::getIPSubnetMask()
@@ -384,7 +410,9 @@ void RoofClass::setIPSubnetMask(String ipSubnetMask)
 {
 	m_Config.ipConfig.subnetMask.fromString(ipSubnetMask);
 	DBPrintln("New subnet mask : " + ipSubnetMask);
+	m_preferences.begin("RTI_RoR", false);
 	m_preferences.putString("subnetMask", ipSubnetMask);
+	m_preferences.end();
 }
 
 String RoofClass::getIPGateway()
@@ -395,13 +423,10 @@ String RoofClass::getIPGateway()
 void RoofClass::setIPGateway(String ipGateway)
 {
 	m_Config.ipConfig.gateway.fromString(ipGateway);
-	DBPrintln("New gateway : " + IpAddress2String(m_Config.ipConfig.gateway));
-
-	// setting DNS IP to gateway IP as we don't use it and this is probably correct for most home users
-	m_Config.ipConfig.dns.fromString(ipGateway);
-
+	DBPrintln("New gateway : " + ipGateway);
+	m_preferences.begin("RTI_RoR", false);
 	m_preferences.putString("gateway", ipGateway);
-	m_preferences.putString("dns", ipGateway);
+	m_preferences.end();
 }
 
 
@@ -411,6 +436,26 @@ String RoofClass::IpAddress2String(const IPAddress& ipAddress)
   		String(ipAddress[1]) + String(".") +
 		String(ipAddress[2]) + String(".") +
 		String(ipAddress[3]);
+}
+
+void RoofClass::resetNetworkToDefaults()
+{
+	m_preferences.begin("RTI_RoR", false);
+	m_preferences.remove("bUseDHCP");
+	m_preferences.remove("ip");
+	m_preferences.remove("subnetMask");
+	m_preferences.remove("gateway");
+	m_preferences.remove("dns");
+	m_preferences.end();
+
+	// reload defaults
+	m_preferences.begin("RTI_RoR", false);
+	m_Config.ipConfig.bUseDHCP = m_preferences.getBool("bUseDHCP", true);
+	m_Config.ipConfig.ip.fromString(m_preferences.getString("ip","192.168.1.9"));
+	m_Config.ipConfig.dns.fromString(m_preferences.getString("gateway","192.168.1.1"));
+	m_Config.ipConfig.gateway.fromString(m_preferences.getString("dns","1.1.1.1"));
+	m_Config.ipConfig.subnetMask.fromString(m_preferences.getString("subnetMask","255.255.255.0"));
+	m_preferences.end();
 }
 
 //
@@ -463,11 +508,9 @@ void RoofClass::SetAcceleration(const long newAccel)
 {
 	m_Config.acceleration = newAccel;
 	stepper->setAcceleration(m_Config.acceleration);    //  steps/s²
-	if(m_bDoSave) {
-		m_preferences.begin("RTI_RoR", false);
-		m_preferences.putLong("acceleration", newAccel);
-		m_preferences.end();
-	}
+	m_preferences.begin("RTI_RoR", false);
+	m_preferences.putLong("acceleration", newAccel);
+	m_preferences.end();
 }
 
 long RoofClass::GetMaxSpeed()
@@ -478,12 +521,10 @@ long RoofClass::GetMaxSpeed()
 void RoofClass::SetMaxSpeed(const long newSpeed)
 {
 	m_Config.maxSpeed = newSpeed;
-	stepper->setSpeedInHz(m_Config.maxSpeed);  //  steps/s
-	if(m_bDoSave) {
-		m_preferences.begin("RTI_RoR", false);
-		m_preferences.putLong("maxSpeed", newSpeed);
-		m_preferences.end();
-	}
+	stepper->setSpeedInHz(newSpeed);  //  steps/s
+	m_preferences.begin("RTI_RoR", false);
+	m_preferences.putLong("maxSpeed", newSpeed);
+	m_preferences.end();
 }
 
 long RoofClass::getOpenPosition()
@@ -517,11 +558,9 @@ void RoofClass::SetReversed(const bool isReversed)
 {
 	m_Config.reversed = isReversed;
 	stepper->setDirectionPin(DIRECTION_PIN,(!isReversed));
-	if(m_bDoSave) {
-		m_preferences.begin("RTI_RoR", false);
-		m_preferences.putBool("reversed", isReversed);
-		m_preferences.end();
-	}
+	m_preferences.begin("RTI_RoR", false);
+	m_preferences.putBool("reversed", isReversed);
+	m_preferences.end();
 }
 
 int RoofClass::GetDirection()
@@ -534,14 +573,14 @@ long RoofClass::GetStepsPerStroke()
 	return m_Config.stepsPerStroke;
 }
 
-void RoofClass::SetStepsPerStroke(const long newCount)
+void RoofClass::SetStepsPerStroke(const long newCount, bool bSave)
 {
 #pragma message "FixMe"
 	// m_fStepsPerDegree = (double)newCount / 360.0;
 	m_Config.stepsPerStroke = newCount;
-	if(m_bDoSave) {
+	if(bSave) {
 		m_preferences.begin("RTI_RoR", false);
-		m_preferences.putLong("stepsPerStroke", newCount);
+		m_preferences.putBool("stepsPerStroke", newCount);
 		m_preferences.end();
 	}
 }
@@ -565,7 +604,9 @@ int RoofClass::GetLowVoltageCutoff()
 void RoofClass::SetLowVoltageCutoff(const int lowVolts)
 {
 	m_Config.cutOffVolts = lowVolts;
+	m_preferences.begin("RTI_RoR", false);
 	m_preferences.putInt("cutOffVolts", lowVolts);
+	m_preferences.end();
 }
 
 inline bool RoofClass::GetVoltsAreLow()
@@ -612,13 +653,13 @@ void RoofClass::StartCalibrating()
 
 	// are we open, closed or somewhere in between ?
 	if (m_nRoofState != CLOSED ) { // close to restart calibration from close state
-		MoveRelative(-160000000L); // move toward close position
+		MoveRelative(-1073741823L); // move toward close position
 		m_nRoofState = CALIBRATION_STEP_RESET;
 	}
 	else {
 		stepper->setCurrentPosition(0);
 		m_nRoofState = CALIBRATION_STEP_OPENING;
-		MoveRelative(160000000L); // move toward open position
+		MoveRelative(1073741823L); // move toward open position
 	}
 
 	m_MoveOffUntilTimer.reset();
@@ -636,7 +677,7 @@ void RoofClass::Calibrate()
 			if (!stepper->isRunning()) {
 				m_nRoofState = CALIBRATION_STEP_OPENING;
 				stepper->setCurrentPosition(0);
-				MoveRelative(160000000L);
+				MoveRelative(1073741823L);
 			}
 			break;
 
@@ -767,7 +808,6 @@ void RoofClass::Run()
 		// we count from close, close is 0, full open is the current position
 		position = stepper->getCurrentPosition();
 		SetStepsPerStroke(position);
-		m_preferences.putLong("stepsPerStroke", position);
 	}
 
 	if (m_bWasRunning) {
@@ -819,11 +859,16 @@ void RoofClass::Run()
 	} // end if (m_bWasRunning)
 }
 
-void RoofClass::motorStop()
+void RoofClass::Stop()
 {
-		stepper->stopMove();
+	m_nRoofState = NOT_MOVING;
+	stepper->forceStop();
 }
 
+void RoofClass::motorStop()
+{
+	stepper->stopMove();
+}
 
 void RoofClass::motorMoveRelative(const long howFar)
 {

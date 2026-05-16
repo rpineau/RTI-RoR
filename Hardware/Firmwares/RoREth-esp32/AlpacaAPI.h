@@ -119,14 +119,12 @@ int getAlpacaShutterState()
 
 }
 
-
 void formDataToJson(Request &req, JsonDocument &FormData)
 {
 	char name[ALPACA_VAR_BUF_LEN];
 	char value[ALPACA_VAR_BUF_LEN];
 	String sName;
 	String sValue;
-
 	memset(name,0,ALPACA_VAR_BUF_LEN);
 	memset(value,0,ALPACA_VAR_BUF_LEN);
 	while(req.form(name, ALPACA_VAR_BUF_LEN-1, value, ALPACA_VAR_BUF_LEN-1)){
@@ -134,15 +132,24 @@ void formDataToJson(Request &req, JsonDocument &FormData)
 		sName.toLowerCase();
 		sValue = String(value);
 		sValue.toLowerCase();
-		DBPrintln("name : " + sName);
-		DBPrintln("value : " + sValue);
-		if(isDigit(value[0]) ) {
+
+		DBPrintln(String(__func__) + " : name :'" + String(sName) + "' with value : '" + String(sValue) + "'");
+
+		if(isDigit(value[0])) {
 			if(sValue.indexOf('.') == -1) {
 				// int
-				FormData[sName]=sValue.toInt();
+				FormData[sName] = sValue.toInt();
 			} else {
-				// double
-				FormData[sName]=sValue.toDouble();
+				// check if it could be an IP (more than one dot)
+				int dotCount = 0;
+				for(char c : sValue) if(c == '.') dotCount++;
+				if(dotCount > 1) {
+					// IP address or similar — treat as string
+					FormData[sName] = sValue;
+				} else {
+					// float
+					FormData[sName] = sValue.toFloat();
+				}
 			}
 		}
 		else {
@@ -160,6 +167,7 @@ void formDataToJson(Request &req, JsonDocument &FormData)
 		}
 	}
 }
+
 
 
 void  getQueryGetVariables(String sQueryString, std::vector<std::vector<String>> &svParameters)
@@ -1743,6 +1751,86 @@ void envConditionState(Request &req, Response &res)
 	res.write((uint8_t*)(sResp.c_str()),sResp.length());
 }
 
+void openRoof(Request &req, Response &res)
+{
+	JsonDocument controllerResp;
+	String sResp;
+
+	Roof->Open();
+	
+	controllerResp["value"] = A_OPENING;
+	serializeJson(controllerResp, sResp);
+	DBPrintln(String(__func__) + " : sResp : " + sResp);
+
+	res.set("Content-Type", "application/json");
+	res.write((uint8_t*)(sResp.c_str()),sResp.length());
+}
+
+void closeRoof(Request &req, Response &res)
+{
+	JsonDocument controllerResp;
+	String sResp;
+
+	Roof->Close();
+	
+	controllerResp["value"] = A_CLOSING;
+	serializeJson(controllerResp, sResp);
+	DBPrintln(String(__func__) + " : sResp : " + sResp);
+
+	res.set("Content-Type", "application/json");
+	res.write((uint8_t*)(sResp.c_str()),sResp.length());
+}
+
+void getRoofState(Request &req, Response &res)
+{
+	JsonDocument controllerResp;
+	String sResp;
+	int nRoofState;
+
+	nRoofState = Roof->getRoofState();
+	switch(nRoofState){
+		case OPEN :
+			controllerResp["value"] = A_OPEN;
+			break;
+		case CLOSED : 
+			controllerResp["value"] = A_CLOSED;
+			break;
+		case OPENING :
+		case FINISHING_OPENING :
+			controllerResp["value"] = A_OPENING;
+			break;
+		case CLOSING :
+		case FINISHING_CLOSING :
+			controllerResp["value"] = A_CLOSING;
+			break;
+		case ROOF_ERROR : 
+			controllerResp["value"] = A_ERROR;
+			break;
+		default:
+			controllerResp["value"] = A_ERROR;
+			break;
+	}
+	serializeJson(controllerResp, sResp);
+	DBPrintln(String(__func__) + " : sResp : " + sResp);
+
+	res.set("Content-Type", "application/json");
+	res.write((uint8_t*)(sResp.c_str()),sResp.length());
+}
+
+void resetToFactory(Request &req, Response &res)
+{
+	JsonDocument controllerResp;
+	String sResp;
+	float fParkAz;
+
+	controllerResp["value"] = "Resetting to factory";
+	serializeJson(controllerResp, sResp);
+	DBPrintln(String(__func__) + " : sResp : " + sResp);
+	res.set("Content-Type", "application/json");
+	res.write((uint8_t*)(sResp.c_str()),sResp.length());
+	Roof->resetAlltoDefault();
+}
+
 
 class DomeAlpacaServer
 {
@@ -1847,6 +1935,13 @@ void DomeAlpacaServer::startServer()
 	m_AlpacaRestServer->use("/setup/unsafeAction", &unsafeAction);
 	m_AlpacaRestServer->get("/setup/roofVoltage", &roofVoltageCutoffValue);
 	m_AlpacaRestServer->get("/setup/envCondition", &envConditionState);
+
+		// special endpoint to control the dome directly
+	m_AlpacaRestServer->put("/setup/openShutter", &openRoof);
+	m_AlpacaRestServer->put("/setup/closeShutter", &closeRoof);
+	m_AlpacaRestServer->get("/setup/getShutterState", &getRoofState);
+
+	m_AlpacaRestServer->put("/setup/resetToFactory", &resetToFactory);
 
 	DBPrintln("m_AlpacaRestServer started");
 }
