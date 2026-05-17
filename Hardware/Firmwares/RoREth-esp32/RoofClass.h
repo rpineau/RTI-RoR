@@ -672,8 +672,8 @@ void RoofClass::Calibrate()
 
 	switch (m_nRoofState) {
 		case(CALIBRATION_STEP_RESET):
-			if(m_MoveOffUntilTimer.elapsed() <= m_nMOVE_OFFUntilLapse)
-				break;
+			//if(m_MoveOffUntilTimer.elapsed() <= m_nMOVE_OFFUntilLapse)
+			//	break;
 			if (!stepper->isRunning()) {
 				m_nRoofState = CALIBRATION_STEP_OPENING;
 				stepper->setCurrentPosition(0);

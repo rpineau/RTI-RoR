@@ -1,0 +1,653 @@
+openapi: 3.2.0
+
+info:
+  title: RTI-Zone Roll off Roof API
+  version: 1.0.0
+  description: This API describes communications with the RTI-Zone Roll off Roof server.
+  contact:
+    name: RTI-Zone
+    url: https://rti-zone.org/
+externalDocs:
+  description: Find out more about the RTI-Zone Roll Of Roof controller
+  url: https://rti-zone.org/astro_dome_control.php
+servers:
+- url: http://{host}/
+  description: hostname or ip address of RoR controller
+  variables:
+    host:
+      default: 192.168.1.9
+      description: The hostname or ip address.
+paths:
+  /setup/reverseDirection:
+    get:
+      summary: Get the controller default movement direction
+      description: 'Retrieve the controller movement direction.'
+      operationId: getReverseDirection
+      responses:
+        '200':
+          description: Direction successfully retrieved
+        '400':
+          $ref: '#/components/responses/Response400'
+      tags:
+      - Roof Controller
+    put:
+      summary: Set the controller direction, normal or reversed
+      description: 'Set the controller direction, normal or reversed.'
+      operationId: setReverseDirection
+      responses:
+        '200':
+          description: Direction successfully set
+        '400':
+          $ref: '#/components/responses/Response400'
+      tags:
+      - Roof Controller
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                value:
+                  type: boolean
+              required:
+              - value
+
+  /setup/useDHCP:
+    get:
+      summary: Get the controller DHCP setting
+      description: 'Retrieve the controller DHCP setting.'
+      operationId: getDHCPEnabled
+      responses:
+        '200':
+          description: DHCP value successfully retrieved
+        '400':
+          $ref: '#/components/responses/Response400'
+      tags:
+      - Networking
+    put:
+      summary: Set the controller DHCP setting
+      description: 'Set the controller DHCP setting.'
+      operationId: setDHCPEnabled
+      responses:
+        '200':
+          description: DHCP successfully set
+        '400':
+          $ref: '#/components/responses/Response400'
+      tags:
+      - Networking
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                value:
+                  type: boolean
+              required:
+              - value
+
+  /setup/macAddress:
+    get:
+      summary: Get the controller MAC Address
+      description: 'Retrieve the controller MAC Address.'
+      operationId: getMACAddress
+      responses:
+        '200':
+          description: MAC Address value successfully retrieved
+        '400':
+          $ref: '#/components/responses/Response400'
+      tags:
+      - Networking
+
+  /setup/ipAddress:
+    get:
+      summary: Get the controller IP Address
+      description: 'Retrieve the controller IP Address.'
+      operationId: getIpAddress
+      responses:
+        '200':
+          description: IP Address value successfully retrieved
+        '400':
+          $ref: '#/components/responses/Response400'
+      tags:
+      - Networking
+    put:
+      summary: Set the controller IP Address
+      description: 'Set the controller IP Address.'
+      operationId: setIpAddress
+      responses:
+        '200':
+          description: IP Address successfully set
+        '400':
+          $ref: '#/components/responses/Response400'
+      tags:
+      - Networking
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                value:
+                  type: string
+              required:
+              - value
+
+  /setup/subnetMask:
+    get:
+      summary: Get the controller subnet mask
+      description: 'Retrieve the controller subnet mask.'
+      operationId: getSubnetMask
+      responses:
+        '200':
+          description: Subnet mask value successfully retrieved
+        '400':
+          $ref: '#/components/responses/Response400'
+      tags:
+      - Networking
+    put:
+      summary: Set the controller subnet mask
+      description: 'Set the controller subnet mask.'
+      operationId: setSubnetMask
+      responses:
+        '200':
+          description: Subnet mask successfully set
+        '400':
+          $ref: '#/components/responses/Response400'
+      tags:
+      - Networking
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                value:
+                  type: string
+              required:
+              - value
+
+  /setup/ipGateway:
+    get:
+      summary: Get the controller gateway IP
+      description: 'Retrieve the controller gateway IP.'
+      operationId: getGatewayIP
+      responses:
+        '200':
+          description: Gateway IP value successfully retrieved
+        '400':
+          $ref: '#/components/responses/Response400'
+      tags:
+      - Networking
+    put:
+      summary: Set the controller gateway IP
+      description: 'Set the controller gateway IP.'
+      operationId: setGatewayIP
+      responses:
+        '200':
+          description: Gateway IP successfully set
+        '400':
+          $ref: '#/components/responses/Response400'
+      tags:
+      - Networking
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                value:
+                  type: string
+              required:
+              - value
+
+  /setup/restoreNetworkDefaults:
+    put:
+      summary: Reset all network configs to their defaults value
+      description: 'Reset all network configs to their defaults values for Ethernet and Wifi.'
+      operationId: setNetworkDefaults
+      responses:
+        '200':
+          description: Shutter controller network settings successfully reset to default
+        '400':
+          $ref: '#/components/responses/Response400'
+      tags:
+      - Networking
+
+  /setup/roofCalibrate:
+    get:
+      summary: Get the controller calibration status
+      description: 'Retrieve the controller calibration status.'
+      operationId: getCalibrationStatus
+      responses:
+        '200':
+          description: Calibration status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Calibration'
+        '400':
+          $ref: '#/components/responses/Response400'
+      tags:
+      - Roof Controller
+    put:
+      summary: Start or stop calibration
+      description: 'Start or stop the controller calibration.'
+      operationId: setCalibrationStatus
+      responses:
+        '200':
+          description: Calibration state successfully set
+        '400':
+          $ref: '#/components/responses/Response400'
+      tags:
+      - Roof Controller
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                value:
+                  $ref: '#/components/schemas/CalibrationAction'
+              required:
+              - value
+
+  /setup/stepPerOpen:
+    get:
+      summary: Get the controller steps for a full range movement
+      description: 'Retrieve the controller steps for a full range movement.'
+      operationId: getStepPerStroke
+      responses:
+        '200':
+          description: Controller steps for a full range movement
+        '400':
+          $ref: '#/components/responses/Response400'
+      tags:
+      - Roof Controller
+    put:
+      summary: set the controller steps for a full range movement
+      description: 'Set the controller steps for a full range movement.'
+      operationId: setStepPerStork
+      responses:
+        '200':
+          description: Controller steps for a full range movement successfully set
+        '400':
+          $ref: '#/components/responses/Response400'
+      tags:
+      - Roof Controller
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                value:
+                  type: integer
+              required:
+              - value
+
+  /setup/roofSpeed:
+    get:
+      summary: Get the controller move speed
+      description: 'Retrieve the controller move speed in step per second.'
+      operationId: getRoofSpeed
+      responses:
+        '200':
+          description: Controller move speed in step per second
+        '400':
+          $ref: '#/components/responses/Response400'
+      tags:
+      - Roof Controller
+    put:
+      summary: set the controller move speed in step per second
+      description: 'Set the controller move speed ins step per second.'
+      operationId: setRoofSpeed
+      responses:
+        '200':
+          description: Controller move speed successfully set
+        '400':
+          $ref: '#/components/responses/Response400'
+      tags:
+      - Roof Controller
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                value:
+                  type: integer
+              required:
+              - value
+
+  /setup/roofAcceleration:
+    get:
+      summary: Get the controller move acceleration
+      description: 'Retrieve the controller move acceleration in step per second
+        per second.'
+      operationId: getRoofAcceleration
+      responses:
+        '200':
+          description: Controller move acceleration in step per second per second
+        '400':
+          $ref: '#/components/responses/Response400'
+      tags:
+      - Roof Controller
+    put:
+      summary: set the controller rotation acceleration in step per second per second
+      description: 'Set the controller rotation acceleration ins step per second per
+        second.'
+      operationId: setRoofAcceleration
+      responses:
+        '200':
+          description: Controller move acceleration successfully set
+        '400':
+          $ref: '#/components/responses/Response400'
+      tags:
+      - Roof Controller
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                value:
+                  type: integer
+              required:
+              - value
+
+  /setup/restoreMotorSettings:
+    put:
+      summary: set the controller motor settings back to default
+      description: 'Set the controller motor settings back to default.'
+      operationId: setMotorDefault
+      responses:
+        '200':
+          description: Controller motor settings successfully reset to default
+        '400':
+          $ref: '#/components/responses/Response400'
+      tags:
+      - Roof Controller
+
+  /setup/unsafeAction:
+    get:
+      summary: Get the controller action in case of an unsafe weather condition
+      description: 'Retrieve the controller action in case of an unsafe weather condition.'
+      operationId: getUnsafeAction
+      responses:
+        '200':
+          description: Controller action in case of an unsafe weather condition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnsafeAction'
+        '400':
+          $ref: '#/components/responses/Response400'
+      tags:
+      - Roof Controller
+    put:
+      summary: set the controller action in case of an unsafe weather condition
+      description: 'Set the controller action in case of an unsafe weather condition.'
+      operationId: setUnsafeAction
+      responses:
+        '200':
+          description: Controller Action to take in case of an unsafe weather condition
+            successfully set
+        '400':
+          $ref: '#/components/responses/Response400'
+      tags:
+      - Roof Controller
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                value:
+                  $ref: '#/components/schemas/UnsafeAction'
+              required:
+              - value
+
+  /setup/envCondition:
+    get:
+      summary: Get the controller weather condition
+      description: 'Retrieve the controller weather condition based on sensor pin
+        value.'
+      operationId: getEnvCondition
+      responses:
+        '200':
+          description: Controller weather condition
+        '400':
+          $ref: '#/components/responses/Response400'
+      tags:
+      - Roof Controller
+
+  /setup/roofVoltage:
+    get:
+      summary: Get the controller voltage cutoff
+      description: 'Retrieve the controller voltage.'
+      operationId: getRoofCutOff
+      responses:
+        '200':
+          description: Roof controller voltage
+        '400':
+          $ref: '#/components/responses/Response400'
+      tags:
+      - Roof Controller
+    put:
+      summary: Set the roof controller voltage cutoff
+      description: 'Set the roof controller voltage cutoff.
+        If the voltage get to this value or bellow, the roof will close.'
+      operationId: setRoofCutOff
+      responses:
+        '200':
+          description: Roof controller voltage cutoff successfully set
+        '400':
+          $ref: '#/components/responses/Response400'
+      tags:
+      - Roof Controller
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                value:
+                  type: integer
+              required:
+              - value
+
+
+  /setup/openRoof:
+    put:
+      summary: Open the roof
+      description: 'This will open the roof'
+      operationId: openRoof
+      responses:
+        '200':
+          description: Opening
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoofStatus'
+        '400':
+          $ref: '#/components/responses/Response400'
+      tags:
+      - Roof Control
+
+  /setup/closeRoof:
+    put:
+      summary: Close the roof
+      description: 'This will close the roof'
+      operationId: closeRoof
+      responses:
+        '200':
+          description: Closing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoofStatus'
+        '400':
+          $ref: '#/components/responses/Response400'
+      tags:
+      - Roof Control
+
+  /setup/getRoofState:
+    get:
+      summary: Get the shutter(s) state
+      description: 'Retrieve the shutter(s) state'
+      operationId: getShutterState
+      responses:
+        '200':
+          description: Shutter state successfully retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoofStatus'
+        '400':
+          $ref: '#/components/responses/Response400'
+      tags:
+      - Roof Control
+
+  /setup/resetToFactory:
+    put:
+      summary: Reset all configs to their factory values
+      description: 'Reset all configs to their factory values.'
+      operationId: resetToFactory
+      responses:
+        '200':
+          description: All settings successfully reset to default
+        '400':
+          $ref: '#/components/responses/Response400'
+      tags:
+      - Advanced
+
+components:
+  schemas:
+    ErrorCode:
+      type: integer
+      description: Error codes. Same as Alpaca
+      enum:
+      - 0
+      - 1024
+      - 1025
+      - 1026
+      - 1031
+      - 1032
+      - 1033
+      - 1035
+      - 1036
+
+    CalibrationAction:
+      type: string
+      enum:
+      - start
+      - stop
+      x-enum-varnames:
+      - start
+      - stop
+
+    CalibrationStates:
+      type: integer
+      description: Calibration states
+      enum:
+      - 6
+      - 8
+      - 0
+      x-enum-varnames:
+      - CALIBRATING
+      - MEASURING
+      - IDLE
+      x-enum-descriptions:
+      - Controller is doing a rotation for step calibration
+      - Controller is measuring number of steps per rotation.
+      - Controller is idle.
+
+    UnsafeAction:
+      type: integer
+      enum:
+      - 0
+      - 1
+      x-enum-varnames:
+      - DO_NOTHING
+      - CLOSE
+      x-enum-descriptions:
+      - Do nothing
+      - Close the roof
+
+    RoofStatus:
+      type: integer
+      enum:
+      - 0
+      - 1
+      - 2
+      - 3
+      - 4
+      x-enum-varnames:
+      - OPEN
+      - CLOSED
+      - OPENING
+      - CLOSING
+      - ERROR
+      x-enum-descriptions:
+      - Shutter is open
+      - Shutter is closed
+      - Shutter is opening
+      - Shutter is closing
+      - Shutter state is unknown
+
+    Response400ErrorInfo:
+      type: object
+      properties:
+        ErrorNumber:
+          $ref: '#/components/schemas/ErrorCode'
+        ErrorMessage:
+          type: string
+      required:
+      - ErrorNumber
+      - ErrorMessage
+
+    Calibration:
+      type: object
+      properties:
+        value:
+          $ref: '#/components/schemas/CalibrationStates'
+      required:
+      - value
+
+  examples:
+    ERROR_BUSY_SLEWING:
+      value:
+        ErrorNumber: 1035
+        ErrorMessage: Controller is busy slewing to a new position.
+      description: No Error
+    ERROR_BUSY_CALIBRATING:
+      value:
+        ErrorNumber: 1035
+        ErrorMessage: Controller is busy calibrating.
+      description: Controller is busy
+
+  responses:
+    Response400:
+      description: Roof controller error. Additional information encoded in the response
+        content.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Response400ErrorInfo'
+          examples:
+            ERROR_BUSY_SLEWING:
+              $ref: '#/components/examples/ERROR_BUSY_SLEWING'
+            ERROR_BUSY_CALIBRATING:
+              $ref: '#/components/examples/ERROR_BUSY_CALIBRATING'

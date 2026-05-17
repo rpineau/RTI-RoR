@@ -1686,7 +1686,7 @@ void restoreMotorValues(Request &req, Response &res)
 }
 
 
-void roofVoltageCutoffValue(Request &req, Response &res)
+void roofVoltageValue(Request &req, Response &res)
 {
 	JsonDocument controllerResp;
 	String sResp;
@@ -1817,6 +1817,20 @@ void getRoofState(Request &req, Response &res)
 	res.write((uint8_t*)(sResp.c_str()),sResp.length());
 }
 
+void restoreNetworkDefaults(Request &req, Response &res)
+{
+	JsonDocument controllerResp;
+	String sResp;
+	float fParkAz;
+
+	controllerResp["value"] = "Resetting network settings to default values";
+	serializeJson(controllerResp, sResp);
+	DBPrintln(String(__func__) + " : sResp : " + sResp);
+	res.set("Content-Type", "application/json");
+	res.write((uint8_t*)(sResp.c_str()),sResp.length());
+	Roof->resetNetworkToDefaults();
+}
+
 void resetToFactory(Request &req, Response &res)
 {
 	JsonDocument controllerResp;
@@ -1916,8 +1930,6 @@ void DomeAlpacaServer::startServer()
 	m_AlpacaRestServer->put("/api/v1/dome/0/slewtoazimuth", &doGoTo);
 	m_AlpacaRestServer->put("/api/v1/dome/0/synctoazimuth", &doSyncAzimuth);
 
-
-
 	// adding our own endpoints for the settings
 	m_AlpacaRestServer->use("/setup/reverseDirection", &reverseDirectionState);
 
@@ -1926,6 +1938,7 @@ void DomeAlpacaServer::startServer()
 	m_AlpacaRestServer->use("/setup/ipAddress", &ipAddressValue);
 	m_AlpacaRestServer->use("/setup/subnetMask", &subnetMaskValue);
 	m_AlpacaRestServer->use("/setup/ipGeteway", &ipGetewayValue);
+	m_AlpacaRestServer->put("/setup/restoreNetworkDefaults", &restoreNetworkDefaults);
 
 	m_AlpacaRestServer->use("/setup/roofCalibrate", &roofCalibrateAction);
 	m_AlpacaRestServer->use("/setup/stepPerOpen", &stepPerOpenValue);
@@ -1933,7 +1946,7 @@ void DomeAlpacaServer::startServer()
 	m_AlpacaRestServer->use("/setup/roofAcceleration", &roofAccelerationValue);
 	m_AlpacaRestServer->put("/setup/restoreMotorSettings", &restoreMotorValues);
 	m_AlpacaRestServer->use("/setup/unsafeAction", &unsafeAction);
-	m_AlpacaRestServer->get("/setup/roofVoltage", &roofVoltageCutoffValue);
+	m_AlpacaRestServer->get("/setup/roofVoltage", &roofVoltageValue);
 	m_AlpacaRestServer->get("/setup/envCondition", &envConditionState);
 
 		// special endpoint to control the dome directly
