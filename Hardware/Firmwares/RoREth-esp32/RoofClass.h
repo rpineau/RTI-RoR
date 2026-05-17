@@ -97,7 +97,8 @@ public:
 	void        motorMoveRelative(const long howFar);
 	void		GotoPosition(const long nPos);
 	bool		isRunning();
-	void		ButtonCheck();
+	void		ButtonOpenCheck();
+	void		ButtonCloseCheck();
 
 	void        getIpConfig(IPConfig &config);
 	bool        getDHCPFlag();
@@ -753,12 +754,19 @@ void RoofClass::Close()
 }
 
 
-void RoofClass::ButtonCheck()
+void RoofClass::ButtonOpenCheck()
 {
 	if (digitalRead(BUTTON_OPEN) == LOW) {
 		MoveRelative(160000000L);
 	}
-	else if (digitalRead(BUTTON_CLOSE) == LOW)  {
+	else {
+		motorStop();
+	}
+}
+
+void RoofClass::ButtonCloseCheck()
+{
+	if (digitalRead(BUTTON_CLOSE) == LOW)  {
 		MoveRelative(-160000000L);
 	}
 	else {

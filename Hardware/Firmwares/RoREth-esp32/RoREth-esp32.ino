@@ -14,10 +14,6 @@
 #include "config.h"
 #include "RoofClass.h"
 
-// FreeRTOS stuff
-EventGroupHandle_t xEventGroup;
-
-
 #pragma message "Ethernet enabled"
 // include and some defines for ethernet connection
 #include <SPI.h>    // ESP32 :  SCK: GPIO18, SDO/TX: GPIO23, SDI: GPIO19, CS: GPIO5, Reset : GPIO29, Int : GPIO0
@@ -69,7 +65,8 @@ void checkForNewTCPClient();
 void openIntHandler();
 void closeIntHandler();
 void conditionIntHandler();
-void buttonHandler();
+void buttonOpenHandler();
+void buttonCloseHandler();
 void resetChip(int);
 void CheckForCommands();
 void CheckForCondition();
@@ -104,7 +101,6 @@ void setup()
 
 	nbEthernetClient = 0;
 
-	xEventGroup = xEventGroupCreate();
 #ifdef DEBUG
 #ifndef DEBUG_TO_COMPUTER
 	DebugPort.begin(115200, SERIAL_8N1, 16, 17); // pins 16 rx2, 17 tx2, 115200 bps, 8 bits no parity 1 stop bit
@@ -178,13 +174,12 @@ void loop()
 //
 void MotorTask(void *)
 {
-
 	DBPrintln("========== Motor task starting ==========");
 	DBPrintln("========== Motor task Attaching interrupt handler ==========");
 	attachInterrupt(digitalPinToInterrupt(CLOSE_PIN), closeIntHandler, FALLING);
 	attachInterrupt(digitalPinToInterrupt(OPEN_PIN), openIntHandler, FALLING);
-	attachInterrupt(digitalPinToInterrupt(BUTTON_CLOSE), buttonHandler, CHANGE);
-	attachInterrupt(digitalPinToInterrupt(BUTTON_OPEN), buttonHandler, CHANGE);
+	attachInterrupt(digitalPinToInterrupt(BUTTON_CLOSE), buttonCloseHandler, CHANGE);
+	attachInterrupt(digitalPinToInterrupt(BUTTON_OPEN), buttonOpenHandler, CHANGE);
 	attachInterrupt(digitalPinToInterrupt(COND_SENSOR_PIN), conditionIntHandler, CHANGE);
 
 	esp_task_wdt_add(NULL);
@@ -314,10 +309,16 @@ void IRAM_ATTR conditionIntHandler()
 	   Roof->conditionInterrupt();
 }
 
-void IRAM_ATTR buttonHandler()
+void IRAM_ATTR buttonOpenHandler()
 {
    if(Roof)
-	   Roof->ButtonCheck();
+	   Roof->ButtonOpenCheck();
+}
+
+void IRAM_ATTR buttonCloseHandler()
+{
+   if(Roof)
+	   Roof->ButtonCloseCheck();
 }
 
 

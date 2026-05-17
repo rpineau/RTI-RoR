@@ -1854,8 +1854,6 @@ public :
 	void checkForRequest();
 	void setRoofPtr(RoofClass *pRoof);
 
-	static void myCallback(Request &req, Response &res);
-
 private :
 	EthernetServer *mRestServer;
 	Application  *m_AlpacaRestServer;
