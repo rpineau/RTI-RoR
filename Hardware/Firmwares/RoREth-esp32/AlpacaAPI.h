@@ -7,7 +7,7 @@
 #pragma message "Alpaca server enabled"
 #include <vector>
 #include <functional>
-#include <EthernetUdp.h>
+#include <Network.h>
 #include <ArduinoJson.h>
 // Alpaca REST server
 #include <UUID.h>
@@ -19,6 +19,7 @@
 #define ALPACA_OK 0
 #define DISCOVERY_ERROR -1
 #define DOME_INTERFACE_VERSION 3
+#define UDP_MAX_DATA_SIZE 64
 
 enum AlpacaShutterStates { A_OPEN=0, A_CLOSED, A_OPENING, A_CLOSING,  A_ERROR};
 uint32_t nTransactionID;
@@ -27,27 +28,27 @@ String sAlpacaDiscovery = "alpacadiscovery1";
 String sRedirectURL;
 volatile bool bAlpacaConnected = false;
 
-class DomeAlpacaDiscoveryServer
+class RoRAlpacaDiscoveryServer
 {
 public:
-	DomeAlpacaDiscoveryServer(int port=ALPACA_DISCOVERY_PORT);
+	RoRAlpacaDiscoveryServer(int port=ALPACA_DISCOVERY_PORT);
 	void startServer();
 	int checkForRequest();
 private:
-	EthernetUDP *discoveryServer;
+	NetworkUDP *discoveryServer;
 	int m_UDPPort;
 };
 
 // ALPACA discovery server
-DomeAlpacaDiscoveryServer::DomeAlpacaDiscoveryServer(int port)
+RoRAlpacaDiscoveryServer::RoRAlpacaDiscoveryServer(int port)
 {
 	m_UDPPort = port;
 	discoveryServer = nullptr;
 }
 
-void DomeAlpacaDiscoveryServer::startServer()
+void RoRAlpacaDiscoveryServer::startServer()
 {
-	discoveryServer = new EthernetUDP();
+	discoveryServer = new NetworkUDP();
 	if(!discoveryServer) {
 		discoveryServer = nullptr;
 		return;
@@ -56,18 +57,22 @@ void DomeAlpacaDiscoveryServer::startServer()
 	DBPrintln("Alpaca discovery server started on port " + String(m_UDPPort));
 }
 
-int DomeAlpacaDiscoveryServer::checkForRequest()
+int RoRAlpacaDiscoveryServer::checkForRequest()
 {
 	if(!discoveryServer)
 		return -1;
+
 	String sDiscoveryResponse = "{\"AlpacaPort\":"+String(ALPACA_SERVER_PORT)+"}";
 	String sDiscoveryRequest;
-	char packetBuffer[UDP_TX_PACKET_MAX_SIZE];
+
+	char packetBuffer[UDP_MAX_DATA_SIZE+1];
 	int packetSize = discoveryServer->parsePacket();
 	if (packetSize) {
 		DBPrintln("Alpaca discovery server request");
 		memset(packetBuffer,0,sizeof(packetBuffer));
-		discoveryServer->read(packetBuffer, UDP_TX_PACKET_MAX_SIZE);
+		if(packetSize > UDP_MAX_DATA_SIZE)
+			packetSize = UDP_MAX_DATA_SIZE;
+		discoveryServer->read(packetBuffer, packetSize);
 		// do stuff
 		sDiscoveryRequest = String(packetBuffer);
 		DBPrintln("Alpaca discovery server sDiscoveryRequest : " + sDiscoveryRequest);
@@ -78,7 +83,7 @@ int DomeAlpacaDiscoveryServer::checkForRequest()
 		DBPrintln("Alpaca discovery server sending response : " + sDiscoveryResponse);
 		// send discovery reponse
 		discoveryServer->beginPacket(discoveryServer->remoteIP(), discoveryServer->remotePort());
-		discoveryServer->write(sDiscoveryResponse.c_str());
+		discoveryServer->write((uint8_t *)sDiscoveryResponse.c_str(), sDiscoveryResponse.length());
 		discoveryServer->endPacket();
 	}
 	return ALPACA_OK;
@@ -1507,7 +1512,7 @@ void ipAddressValue(Request &req, Response &res)
 		}
 	}
 
-	controllerResp["value"] = String(RoofClass::IpAddress2String(domeEthernet.localIP()));
+	controllerResp["value"] = String(RoofClass::IpAddress2String(RoR_Ethernet.localIP()));
 	serializeJson(controllerResp, sResp);
 	DBPrintln("sResp : " + sResp);
 
@@ -1532,7 +1537,7 @@ void subnetMaskValue(Request &req, Response &res)
 		}
 	}
 
-	controllerResp["value"] = String(RoofClass::IpAddress2String(domeEthernet.subnetMask()));
+	controllerResp["value"] = String(RoofClass::IpAddress2String(RoR_Ethernet.subnetMask()));
 	serializeJson(controllerResp, sResp);
 	DBPrintln("sResp : " + sResp);
 
@@ -1557,7 +1562,7 @@ void ipGetewayValue(Request &req, Response &res)
 		}
 	}
 
-	controllerResp["value"] = String(RoofClass::IpAddress2String(domeEthernet.gatewayIP()));
+	controllerResp["value"] = String(RoofClass::IpAddress2String(RoR_Ethernet.gatewayIP()));
 	serializeJson(controllerResp, sResp);
 	DBPrintln("sResp : " + sResp);
 
@@ -1587,7 +1592,7 @@ void roofCalibrateAction(Request &req, Response &res)
 		}
 	}
 
-	controllerResp["value"] = String(RoofClass::IpAddress2String(domeEthernet.gatewayIP()));
+	controllerResp["value"] = String(RoofClass::IpAddress2String(RoR_Ethernet.gatewayIP()));
 	serializeJson(controllerResp, sResp);
 	DBPrintln("sResp : " + sResp);
 
@@ -1855,22 +1860,26 @@ public :
 	void setRoofPtr(RoofClass *pRoof);
 
 private :
-	EthernetServer *mRestServer;
+	NetworkServer *mRestServer;
 	Application  *m_AlpacaRestServer;
 	int m_nRestPort;
 };
 
 DomeAlpacaServer::DomeAlpacaServer(int port)
 {
+	byte fuseMacForUUID[6];
+	getFuseMac(fuseMacForUUID);
 	m_nRestPort = port;
 	mRestServer = nullptr;
 	m_AlpacaRestServer = nullptr;
 	nTransactionID = 0;
+	uuid.seed(fuseMacForUUID[4],fuseMacForUUID[5]);
+	uuid.generate();
 }
 
 void DomeAlpacaServer::startServer()
 {
-	mRestServer = new EthernetServer(m_nRestPort);
+	mRestServer = new NetworkServer(m_nRestPort);
 	m_AlpacaRestServer = new Application();
 	DBPrintln("m_AlpacaRestServer starting");
 	DBPrintln("m_AlpacaRestServer UUID : " + String(uuid.toCharArray()));
@@ -1961,7 +1970,7 @@ void DomeAlpacaServer::startServer()
 void DomeAlpacaServer::checkForRequest()
 {
 	// process incoming connections one at a time
-	EthernetClient client = mRestServer->accept();
+	NetworkClient client = mRestServer->accept();
 	if (client.connected()) {
 		m_AlpacaRestServer->process(&client);
 		client.stop();

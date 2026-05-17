@@ -12,26 +12,36 @@
 #include <rtc_wdt.h>
 #include <esp_task_wdt.h>
 #include "config.h"
+
+bool firstLoop = true;
 #include "RoofClass.h"
 
 #pragma message "Ethernet enabled"
 // include and some defines for ethernet connection
-#include <SPI.h>    // ESP32 :  SCK: GPIO18, SDO/TX: GPIO23, SDI: GPIO19, CS: GPIO5, Reset : GPIO29, Int : GPIO0
-#include <Ethernet.h>
+#include <Network.h>
+
+#ifdef USE_OTA_UPDATE
+#pragma message "OTA Update enable"
+#include <WebServer.h>
+#include <HTTPUpdateServer.h>
+#endif
+
 #include "EtherMac.h"
-#define ETHERNET_CS     5
-#define ETHERNET_INT	0
-#define ETHERNET_RESET  4
-#define CMD_SERVER_PORT 2323
-#define domeEthernet Ethernet
-byte MAC_Address[6];    // Mac address, uses part of the unique ID
+byte MAC_Address[6];
+byte fuseMAC[6];    // Mac address, uses part of the unique ID
+
 IPConfig ServerConfig;
 volatile bool ethernetPresent;
-EthernetServer *domeServer = nullptr;
-EthernetClient domeClient;
-int nbEthernetClient = 0;
+NetworkServer *RoR_Server = nullptr;
+NetworkClient domeClient;
+int nbNetworkClient = 0;
 String networkBuffer = "";
 String sLocalIPAdress = "";
+// OTA update stuff
+#ifdef USE_OTA_UPDATE
+WebServer httpServer(OTA_PORT);
+HTTPUpdateServer httpUpdater;
+#endif
 
 String computerBuffer = "";
 
@@ -39,15 +49,6 @@ bool bParked = false; // use to the run check doesn't continuously try to park
 
 RoofClass *Roof = NULL;
 
-static const unsigned long pingInterval = 5000; // 5 seconds, can't be changed with command
-
-// Once booting is done and XBee is ready, broadcast a hello message
-// so a shutter knows you're around if it is already running. If not,
-// the shutter will send a hello when it boots.
-volatile bool bSentHello;
-
-
-volatile bool bShutterPresent;
 // global variable for conditon status
 volatile bool bIsSafe;
 // global variable for shutter voltage state
@@ -70,7 +71,7 @@ void buttonCloseHandler();
 void resetChip(int);
 void CheckForCommands();
 void CheckForCondition();
-void ReceiveNetwork(EthernetClient client);
+void ReceiveNetwork(NetworkClient client);
 void ReceiveComputer();
 void ProcessCommand(int nSource);
 void Abort();
@@ -78,7 +79,7 @@ void Abort();
 #ifdef USE_ALPACA
 #include "AlpacaAPI.h"
 DomeAlpacaServer *AlpacaServer;
-DomeAlpacaDiscoveryServer *AlpacaDiscoveryServer;
+RoRAlpacaDiscoveryServer *AlpacaDiscoveryServer;
 #endif
 
 void MotorTask(void *);
@@ -94,12 +95,10 @@ esp_task_wdt_config_t twdt_config = {
 void setup()
 {
 	ethernetPresent = false;
-	bSentHello = false;
-	bShutterPresent = false;
 	bIsSafe = false;
 	bLowShutterVoltage = false;
 
-	nbEthernetClient = 0;
+	nbNetworkClient = 0;
 
 #ifdef DEBUG
 #ifndef DEBUG_TO_COMPUTER
@@ -112,14 +111,6 @@ void setup()
 
 	digitalWrite(ETHERNET_RESET, 0);
 	pinMode(ETHERNET_RESET, OUTPUT);
-	getMacAddress(MAC_Address);
-	DBPrintln("MAC : " + String(MAC_Address[0], HEX) + String(":") +
-					String(MAC_Address[1], HEX) + String(":") +
-					String(MAC_Address[2], HEX) + String(":") +
-					String(MAC_Address[3], HEX) + String(":") +
-					String(MAC_Address[4], HEX) + String(":") +
-					String(MAC_Address[5], HEX) );
-
 	Computer.begin(115200);
 	//Computer.begin(115200, SERIAL_8N1, 16, 17); // pins 16 rx2, 17 tx2, 115200 bps, 8 bits no parity 1 stop bit
 
@@ -128,7 +119,6 @@ void setup()
 	Roof->motorStop();
 
 	configureEthernet();
-	rtc_wdt_protect_off();
 	esp_task_wdt_deinit();
 	esp_task_wdt_init(&twdt_config);
 	esp_task_wdt_add(NULL);
@@ -136,10 +126,10 @@ void setup()
 	disableCore1WDT();
 	xTaskCreatePinnedToCore(MotorTask, "MotorTask", 10000, NULL, 16, NULL,  0);
 
-	domeServer = new EthernetServer(CMD_SERVER_PORT);
-	domeServer->begin();
+	RoR_Server = new NetworkServer(CMD_SERVER_PORT);
+	RoR_Server->begin();
 #ifdef USE_ALPACA
-	AlpacaDiscoveryServer = new DomeAlpacaDiscoveryServer();
+	AlpacaDiscoveryServer = new RoRAlpacaDiscoveryServer();
 	AlpacaDiscoveryServer->startServer();
 	AlpacaServer = new DomeAlpacaServer();
 	AlpacaServer->startServer();
@@ -154,7 +144,10 @@ void setup()
 
 void loop()
 {
-	const TickType_t xDelay = 1 / portTICK_PERIOD_MS;
+	if(firstLoop) {
+		firstLoop = false;
+		Computer.println("========== Rotator is Ready ==========");
+	}
 
 	if(ethernetPresent) {
 		checkForNewTCPClient();
@@ -164,7 +157,11 @@ void loop()
 
 	CheckForCommands();
 	CheckForCondition();
-	vTaskDelay(xDelay);
+
+#ifdef USE_OTA_UPDATE
+	httpServer.handleClient();
+#endif
+
 	taskYIELD();
 	esp_task_wdt_reset();
 }
@@ -206,88 +203,141 @@ void configureEthernet()
 										ServerConfig.subnetMask);
 }
 
-
+#ifdef DEBUG
+void onEvent(arduino_event_id_t event, arduino_event_info_t info)
+{
+  switch (event) {
+    case ARDUINO_EVENT_ETH_START:
+      DBPrintln("ETH Started");
+      //set eth hostname here
+      DBPrintln("esp32-eth0");
+      break;
+    case ARDUINO_EVENT_ETH_CONNECTED:
+      DBPrintln("ETH Connected");
+      break;
+    case ARDUINO_EVENT_ETH_GOT_IP:
+      DBPrintln("ETH Got IP: '" + String(esp_netif_get_desc(info.got_ip.esp_netif)) +"'");
+      DBPrintln(ETH);
+      break;
+    case ARDUINO_EVENT_ETH_LOST_IP:
+      DBPrintln("ETH Lost IP");
+      break;
+    case ARDUINO_EVENT_ETH_DISCONNECTED:
+      DBPrintln("ETH Disconnected");
+      break;
+    case ARDUINO_EVENT_ETH_STOP:
+      DBPrintln("ETH Stopped");
+      break;
+    default:
+      break;
+  }
+}
+#endif
 bool initEthernet(bool bUseDHCP, IPAddress ip, IPAddress dns, IPAddress gateway, IPAddress subnetMask)
 {
 	bool bDhcpOk;
 	int nTimeout = 0;
+#ifdef DEBUG
+	Network.onEvent(onEvent); // this is just for debugging
+#endif
 	DBPrintln("========== Init Ethernet ==========");
-	resetChip(ETHERNET_RESET);
+	// resetChip(ETHERNET_RESET);
+	SPI.begin(ETH_SPI_SCK, ETH_SPI_MISO, ETH_SPI_MOSI);
 	// network configuration
-	Ethernet.init(ETHERNET_CS);
-	nbEthernetClient = 0;
+	if(!ETH.begin(ETH_PHY_TYPE, ETH_PHY_ADDR, ETH_PHY_CS, ETH_PHY_IRQ, ETH_PHY_RST, SPI)) {
+		DBPrintln("NO HARDWARE !!!");
+		return false;
+	}
+	nbNetworkClient = 0;
 	// set an ip so we can get the link status
-	domeEthernet.begin(MAC_Address, "192.168.0.1", "1.1.1.1", "192.168.0.254", "255.255.255.0");
-	while(domeEthernet.linkStatus() == LinkOFF ) {
-		delay(250);
+	RoR_Ethernet.config(ip, gateway, subnetMask);
+	while(!RoR_Ethernet.linkUp() ) {
+		vTaskDelay(250 / portTICK_PERIOD_MS);
 		nTimeout++;
-		if(nTimeout == 10) {
+		if(nTimeout == 120) { // 30 seconds timeout, 250ms per loop, 120 loops = 30 seconds
 			return false;
 		}
 	}
+
+	RoR_Ethernet.macAddress(MAC_Address);
+	RoR_Ethernet.setHostname("RTI-RoR");
+
 	DBPrintln("========== Setting IP config ==========");
 	// try DHCP if set
 	if(bUseDHCP) {
-		bDhcpOk = domeEthernet.begin(MAC_Address, 10000, 4000); // short timeout
-		if(!bDhcpOk) {
-			DBPrintln("DHCP Failed!");
-			if(domeEthernet.linkStatus() == LinkON ) {
-				domeEthernet.begin(MAC_Address, ip, dns, gateway, subnetMask);
-			}
-			else {
-				DBPrintln("No cable");
-				return false;
+		bDhcpOk = RoR_Ethernet.config(IPAddress(0, 0, 0, 0), IPAddress(0, 0, 0, 0), IPAddress(0, 0, 0, 0)); // all value set to the default 0 means use dhcp.
+		if(bDhcpOk) {
+			nTimeout = 0;
+			while(RoR_Ethernet.localIP() == IPAddress(0,0,0,0) ) {
+				vTaskDelay(250 / portTICK_PERIOD_MS);
+				nTimeout++;
+				if(nTimeout == 120) { // 30 seconds timeout, 250ms per loop, 120 loops = 30 seconds
+					break;
+				}
 			}
 		}
 	}
 	else {
-		domeEthernet.begin(MAC_Address, ip, dns, gateway, subnetMask);
+		RoR_Ethernet.config(ip, gateway, subnetMask);
+		RoR_Ethernet.dnsIP(0,dns);
 	}
+
+	if(RoR_Ethernet.localIP() == IPAddress(0,0,0,0)) {
+			RoR_Ethernet.config(ip, gateway, subnetMask); // use defaults
+			vTaskDelay(250 / portTICK_PERIOD_MS);
+	}
+
+	RoR_Ethernet.setDefault();
 
 	DBPrintln("========== Checking hardware status ==========");
-	if(domeEthernet.hardwareStatus() == EthernetNoHardware) {
-		 DBPrintln("NO HARDWARE !!!");
-		return false;
-	}
 	DBPrintln("W5500 Ok.");
-	DBPrintln("W5500 IP = " + RoofClass::IpAddress2String(Ethernet.localIP()));
-	Ethernet.setRetransmissionCount(3);
+	DBPrintln("W5500 IP = " + RoofClass::IpAddress2String(RoR_Ethernet.localIP()));
+#ifdef DEBUG
+	char macBuffer[20];
+	snprintf(macBuffer,20,"%02x:%02x:%02x:%02x:%02x:%02x",
+		MAC_Address[0],
+		MAC_Address[1],
+		MAC_Address[2],
+		MAC_Address[3],
+		MAC_Address[4],
+		MAC_Address[5]);
+	DBPrintln("Dome MAC : " + String(macBuffer));
+#endif
 
 	DBPrintln("Server ready");
+
+	sLocalIPAdress = RoofClass::IpAddress2String(RoR_Ethernet.localIP());
 	return true;
 }
 
 
 void checkForNewTCPClient()
 {
-	if(ServerConfig.bUseDHCP)
-		domeEthernet.maintain();
-
-	if(!domeServer)
+	if(!RoR_Server)
 		return;
 
-	EthernetClient newClient = domeServer->accept();
+	NetworkClient newClient = RoR_Server->accept();
 	if(newClient) {
 		DBPrintln("new client");
-		if(nbEthernetClient > 0) { // we only accept 1 client
+		if(nbNetworkClient > 0) { // we only accept 1 client
 			newClient.write("Already in use#");
 			newClient.flush();
 			newClient.stop();
 			DBPrintln("new client rejected");
 		}
 		else {
-			nbEthernetClient++;
+			nbNetworkClient++;
 			domeClient = newClient;
 			DBPrintln("new client accepted");
 			DBPrintln("nb client = " + String(nbEthernetClient));
 		}
 	}
 
-	if((nbEthernetClient>0) && !domeClient.connected()) {
+	if((nbNetworkClient>0) && !domeClient.connected()) {
 		DBPrintln("client disconnected");
 		domeClient.stop();
-		nbEthernetClient--;
-		DBPrintln("nb client = " + String(nbEthernetClient));
+		nbNetworkClient--;
+		DBPrintln("nb client = " + String(nbNetworkClient));
 	}
 }
 
@@ -355,7 +405,7 @@ void CheckForCondition()
 }
 
 
-void ReceiveNetwork(EthernetClient client)
+void ReceiveNetwork(NetworkClient client)
 {
 	char networkCharacter;
 
@@ -467,12 +517,12 @@ void ProcessCommand(int nSource)
 			break;
 
 		case ETH_RECONFIG :
-			if(nbEthernetClient > 0) {
+			if(nbNetworkClient > 0) {
 				domeClient.stop();
-				nbEthernetClient--;
+				nbNetworkClient--;
 			}
 			DBPrintln("Rebooting for Ethernet reconfiguration");
-			delay(500);
+			vTaskDelay(500 / portTICK_PERIOD_MS);
 			ESP.restart();
 			break;
 
@@ -504,7 +554,7 @@ void ProcessCommand(int nSource)
 			if(!ServerConfig.bUseDHCP)
 				serialMessage = String(IP_ADDRESS) + String(Roof->getIPAddress());
 			else {
-				serialMessage = String(IP_ADDRESS) + String(RoofClass::IpAddress2String(domeEthernet.localIP()));
+				serialMessage = String(IP_ADDRESS) + String(RoofClass::IpAddress2String(RoR_Ethernet.localIP()));
 			}
 			break;
 
@@ -516,7 +566,7 @@ void ProcessCommand(int nSource)
 			if(!ServerConfig.bUseDHCP)
 				serialMessage = String(IP_SUBNET) + String(Roof->getIPSubnetMask());
 			else {
-				serialMessage = String(IP_SUBNET) + String(RoofClass::IpAddress2String(domeEthernet.subnetMask()));
+				serialMessage = String(IP_SUBNET) + String(RoofClass::IpAddress2String(RoR_Ethernet.subnetMask()));
 			}
 			break;
 
@@ -528,7 +578,7 @@ void ProcessCommand(int nSource)
 			if(!ServerConfig.bUseDHCP)
 				serialMessage = String(IP_GATEWAY) + String(Roof->getIPGateway());
 			else {
-				serialMessage = String(IP_GATEWAY) + String(RoofClass::IpAddress2String(domeEthernet.gatewayIP()));
+				serialMessage = String(IP_GATEWAY) + String(RoofClass::IpAddress2String(RoR_Ethernet.gatewayIP()));
 			}
 			break;
 

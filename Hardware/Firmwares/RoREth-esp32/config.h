@@ -23,7 +23,7 @@
 #define DBPrintHex(x)
 #endif // DEBUG
 
-#define VERSION "2.645"
+#define VERSION "3.000"
 #define USE_ALPACA
 #define Computer Serial     // USB = Serial
 #ifdef DEBUG
@@ -79,15 +79,30 @@ Micro-steps per Stroke with original motor and 15.3:1 gearbox
 */
 #define STEPS_DEFAULT       440640
 
-// DM556T stepper controller min pulse width  = 2.5uS
-// ISD02/04/08 stepper controller min pulse width = 5uS at 1600rev/s (8 microsteps).
-// TB6600 Stepper controller min pulse width = 5uS
-#define MIN_PULSE_WIDTH 5
-
 #define ETHERNET_CS     5
-#define ETHERNET_INT	0
+#define ETHERNET_INT	-1
 #define ETHERNET_RESET  4
 #define CMD_SERVER_PORT 2323
-#define domeEthernet Ethernet
+
+// network interfaces
+#include <ETH.h>
+#include <Network.h>
+#define RoR_Ethernet ETH
+
+#define ETH_PHY_TYPE ETH_PHY_W5500
+#define ETH_PHY_ADDR 1
+#define ETH_PHY_CS   ETHERNET_CS
+#define ETH_PHY_IRQ  -1
+#define ETH_PHY_RST  ETHERNET_RESET
+
+// SPI pins
+#define ETH_SPI_SCK         SCK
+#define ETH_SPI_MISO        MISO
+#define ETH_SPI_MOSI        MOSI
+
+
+#ifdef USE_OTA_UPDATE
+#define OTA_PORT	8080
+#endif
 
 #endif
