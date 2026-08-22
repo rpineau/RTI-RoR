@@ -13,6 +13,9 @@
 #include <UUID.h>
 #include <aWOT.h>
 
+#include "EtherMac.h"
+#include "roof_controller_html.h"
+
 #define ALPACA_DISCOVERY_PORT 32227
 #define ALPACA_SERVER_PORT 80
 #define ALPACA_VAR_BUF_LEN 256
@@ -265,6 +268,42 @@ bool getIDs(Request &req, JsonDocument &AlpacaResp, JsonDocument &FormData)
 	DBPrintln("sClientId : " + sClientId);
 	DBPrintln("sClientTransactionId : " + sClientTransactionId);
 	return bParamOk;
+
+}
+
+void AlpacaError_x400(JsonDocument jsonResp, Response &res, String errMsg="Not Implemented")
+{
+	String sResp;
+	jsonResp["ErrorNumber"] = 0x400;
+	jsonResp["ErrorMessage"] = errMsg;
+	jsonResp["Value"] = false;
+	serializeJson(jsonResp, sResp);
+
+	res.set("Content-Type", "application/json");
+	res.write((uint8_t*)(sResp.c_str()),sResp.length());
+}
+
+void AlpacaError_x401(JsonDocument &jsonResp, Response &res, String errMsg="Invalid parameters")
+{
+	String sResp;
+	jsonResp["ErrorNumber"] = 0x401;
+	jsonResp["ErrorMessage"] = errMsg;
+	serializeJson(jsonResp, sResp);
+
+	res.set("Content-Type", "application/json");
+	res.write((uint8_t*)(sResp.c_str()),sResp.length());
+}
+
+
+void AlpacaError_x408(JsonDocument &jsonResp, Response &res, String errMsg="")
+{
+	String sResp;
+	jsonResp["ErrorNumber"] = 0x408;
+	jsonResp["ErrorMessage"] = errMsg;
+	serializeJson(jsonResp, sResp);
+
+	res.set("Content-Type", "application/json");
+	res.write((uint8_t*)(sResp.c_str()),sResp.length());
 }
 
 void redirectToSetup(Request &req, Response &res)
@@ -1703,6 +1742,37 @@ void roofVoltageValue(Request &req, Response &res)
 	res.write((uint8_t*)(sResp.c_str()),sResp.length());
 }
 
+void roofVoltageCutoffValue(Request &req, Response &res)
+{
+	JsonDocument jsonResp;
+	String sResp;
+
+	if(req.method() == Request::PUT) {
+		JsonDocument FormData;
+		formDataToJson(req, FormData);
+		if(FormData.size()==0){
+			AlpacaError_x401(jsonResp, res);
+			return;
+		}
+		else {
+			if(FormData["value"].is<long>()) {
+				Roof->SetLowVoltageCutoff(FormData["value"]);
+			}
+		}
+	}
+
+	jsonResp["value"] = Roof->GetLowVoltageCutoff();
+	serializeJson(jsonResp, sResp);
+	DBPrintln(String(__func__) + " : sResp : " + sResp);
+
+	res.set("Content-Type", "application/json");
+	res.write((uint8_t*)(sResp.c_str()),sResp.length());
+
+}
+
+
+
+
 #pragma message FIXME
 void unsafeAction(Request &req, Response &res)
 {
@@ -1940,6 +2010,7 @@ void DomeAlpacaServer::startServer()
 	m_AlpacaRestServer->use("/setup/roofAcceleration", &roofAccelerationValue);
 	m_AlpacaRestServer->put("/setup/restoreMotorSettings", &restoreMotorValues);
 	m_AlpacaRestServer->use("/setup/unsafeAction", &unsafeAction);
+	m_AlpacaRestServer->use("/setup/roofVoltageCutoff", &roofVoltageCutoffValue);
 	m_AlpacaRestServer->get("/setup/roofVoltage", &roofVoltageValue);
 	m_AlpacaRestServer->get("/setup/envCondition", &envConditionState);
 

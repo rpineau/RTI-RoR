@@ -432,7 +432,7 @@ paths:
       tags:
       - Roof Controller
 
-  /setup/roofVoltage:
+  /setup/roofVoltageCutoff:
     get:
       summary: Get the controller voltage cutoff
       description: 'Retrieve the controller voltage.'
@@ -468,6 +468,18 @@ paths:
               required:
               - value
 
+  /setup/roofVoltage:
+    get:
+      summary: Get the controller voltage
+      description: 'Retrieve the controller voltage.'
+      operationId: getRoofVoltage
+      responses:
+        '200':
+          description: Roof controller voltage
+        '400':
+          $ref: '#/components/responses/Response400'
+      tags:
+      - Roof Controller
 
   /setup/openRoof:
     put:
