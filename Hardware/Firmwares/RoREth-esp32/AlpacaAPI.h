@@ -1390,31 +1390,18 @@ void doSyncAzimuth(Request &req, Response &res)
 	res.write((uint8_t*)(sResp.c_str()),sResp.length());
 }
 
-
 void doSetup(Request &req, Response &res)
 {
-	JsonDocument AlpacaResp;
+	JsonDocument jsonResp;
 	JsonDocument FormData;
 	bool bParamsOk = false;
 	String sResp;
-	String sHTML;
-	res.set("Content-Type", "text/html");
-	DBPrintln("[ ********** doSetup ********** ]");
-	bParamsOk = getIDs(req, AlpacaResp, FormData);
-	sHTML = "<!DOCTYPE html>\n<html>\n";
-	sHTML += "<head>";
-	sHTML += "<title>RTI Dome Setup</title>\n";
-	sHTML += "</head>\n";
-	sHTML += "<body>\n";
-	sHTML += "<H1>RTI Dome Setup</H1>\n";
-	// display passed data
-	if(FormData.size()!=0){
-		sHTML += "<p>data passed : </p>\n";
-		sHTML += "<p>"+sResp+"</p>\n";
-	}
 
-	sHTML += "</body>\n</html>\n";
-	res.print(sHTML);
+	res.set("Content-Type", "text/html");
+
+	DBPrintln("[ ********** " + String(__func__) + " ********** ]");
+	bParamsOk = getIDs(req, jsonResp, FormData);
+	res.print(ROOF_CONTROLLER_HTML);
 }
 
 //
