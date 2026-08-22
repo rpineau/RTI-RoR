@@ -175,7 +175,7 @@ RoofClass::RoofClass()
 	pinMode(BUTTON_CLOSE,             INPUT_PULLUP);
 	pinMode(BUTTON_OPEN,              INPUT_PULLUP);
 	pinMode(COND_SENSOR_PIN,        INPUT_PULLUP);
-	pinMode(VOLTAGE_MONITOR_PIN,    INPUT_PULLUP);
+	pinMode(VOLTAGE_MONITOR_PIN,    INPUT);   // never INPUT_PULLUP on a divider input
 
 	pinMode(SPARE1,    INPUT_PULLUP);
 	pinMode(SPARE2,    INPUT_PULLUP);
@@ -217,7 +217,8 @@ RoofClass::RoofClass()
 	}
 
 
-	m_fAdcConvert = RES_MULT * (AD_REF / 1023.0) * 100;
+	// ESP32 ADC is 12 bit (0..4095), not 10 bit like the AVR it was ported from
+	m_fAdcConvert = RES_MULT * (AD_REF / 4095.0) * 100;
 
 	// reset all timers
 	m_periodicReadingTimer.reset();
@@ -311,19 +312,6 @@ void RoofClass::LoadConfig()
 		m_preferences.begin("RTI_RoR", false);
 		m_preferences.putBool("nvsInit", true);
 	}
-	m_Config.stepsPerStroke = m_preferences.getLong("stepsPerStroke",0);
-	m_Config.openPos = m_preferences.getLong("openPos",0);
-	m_Config.acceleration = m_preferences.getLong("acceleration",0);
-	m_Config.maxSpeed = m_preferences.getLong("maxSpeed",0);
-	m_Config.reversed = m_preferences.getBool("reverse", false);
-	m_Config.cutOffVolts = m_preferences.getInt("cutOffVolts",1200);
-
-	m_Config.ipConfig.bUseDHCP = m_preferences.getBool("bUseDHCP", true);
-	m_Config.ipConfig.ip.fromString(m_preferences.getString("ip","192.168.0.99"));
-	m_Config.ipConfig.dns.fromString(m_preferences.getString("dns","192.168.0.1"));
-	m_Config.ipConfig.gateway.fromString(m_preferences.getString("gateway","192.168.0.1"));
-	m_Config.ipConfig.subnetMask.fromString(m_preferences.getString("subnetMask","255.255.255.0"));
-
 	m_Config.stepsPerStroke = m_preferences.getLong("stepsPerStroke",STEPS_DEFAULT);
 	m_Config.openPos = m_preferences.getLong("openPos",160000000L);
 	m_Config.acceleration = m_preferences.getLong("acceleration",ACCELERATION);
@@ -626,12 +614,18 @@ inline String RoofClass::GetVoltString()
 
 int RoofClass::MeasureVoltage()
 {
-	int adc;
-	double calc;
+	uint32_t sum = 0;
+	const int nSamples = 32;
 
-	adc = analogRead(VOLTAGE_MONITOR_PIN);
-	calc = adc * m_fAdcConvert;
-	return int(calc);
+	// Average several conversions. The ESP32 SAR ADC is noisy, and the
+	// 400k/100k divider presents a high source impedance, so the sampling
+	// capacitor needs time to settle between reads.
+	for(int i = 0; i < nSamples; i++) {
+		sum += analogRead(VOLTAGE_MONITOR_PIN);
+		delayMicroseconds(50);
+	}
+
+	return int((double(sum) / nSamples) * m_fAdcConvert + 0.5);
 }
 
 int RoofClass::getRoofState()
@@ -717,13 +711,21 @@ void RoofClass::MoveRelative(const long howFar)
 
 void RoofClass::GotoPosition(const long nPos)
 {
-		// Goto new target
+	// Goto new target.
+	// Cancel any in-flight move first and wait for the stepper to settle,
+	// otherwise getCurrentPosition() returns a mid-move value and the new
+	// relative move is appended behind the old one, overshooting the target.
 	double position;
 	double delta;
 
+	stepper->forceStop();
+	while(stepper->isRunning()) {
+		vTaskDelay(1 / portTICK_PERIOD_MS);
+	}
+
 	position = stepper->getCurrentPosition();
 	delta = nPos - position;
-	MoveRelative(delta);
+	MoveRelative(lround(delta));
 }
 
 void RoofClass::Open()
@@ -782,9 +784,10 @@ bool RoofClass::isRunning()
 
 void RoofClass::Run()
 {
-	long stepsFromZero;
-	long position;
-	double azimuthDelta;
+	// position must be seeded here: the FINISHING_* branches below read it,
+	// and those states are mutually exclusive with the NOT_MOVING branch that
+	// used to be the only place it was assigned.
+	long position = stepper->getCurrentPosition();
 
 	if (m_periodicReadingTimer.elapsed() >= m_nNextPeriodicReadingLapse) {
 		m_nVolts = MeasureVoltage();

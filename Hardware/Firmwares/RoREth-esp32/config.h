@@ -47,11 +47,12 @@
 #define STEPPER_ENABLE_PIN  13  // Digital Output
 #define DIRECTION_PIN        2  // Digital Output
 #define STEP_PIN            32  // Digital Output
+// 100k to ground on GPIO 12, and 100k to 3.3V on GPIO 0
 #define SPARE_OUT1			 0
 #define SPARE_OUT2			12
 
 // analog
-#define VOLTAGE_MONITOR_PIN A0  // GPIO26/ADC0
+#define VOLTAGE_MONITOR_PIN A0  // GPIO36 / SENSOR_VP (ADC1 ch0, input only)
 #define AD_REF      3.3
 #define RES_MULT    5.0 // resistor voltage divider on the shield
 
