@@ -1823,6 +1823,20 @@ void resetToFactory(Request &req, Response &res)
 	Roof->resetAlltoDefault();
 }
 
+void uiAbort(Request &req, Response &res)
+{
+	JsonDocument jsonResp;
+	String sResp;
+	float fParkAz;
+
+	jsonResp["value"] = "Aborting all motion";
+	serializeJson(jsonResp, sResp);
+	DBPrintln(String(__func__) + " : sResp : " + sResp);
+
+	res.set("Content-Type", "application/json");
+	res.write((uint8_t*)(sResp.c_str()),sResp.length());
+	Abort();
+}
 
 class DomeAlpacaServer
 {
@@ -1934,6 +1948,7 @@ void DomeAlpacaServer::startServer()
 	m_AlpacaRestServer->get("/setup/getShutterState", &getRoofState);
 
 	m_AlpacaRestServer->put("/setup/resetToFactory", &resetToFactory);
+	m_AlpacaRestServer->put("/setup/abort", &uiAbort);
 
 	DBPrintln("m_AlpacaRestServer started");
 }
