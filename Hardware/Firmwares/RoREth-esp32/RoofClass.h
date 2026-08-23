@@ -137,10 +137,6 @@ private:
 	double m_dAz = 0;
 	double m_dParkAz = 0;
 
-	StopWatch       m_periodicReadingTimer;
-	unsigned long   m_nNextPeriodicReadingLapse = 10;
-
-
 	// Utility
 	void 		LoadConfig();
 	volatile bool	m_bIsSafe;
@@ -201,13 +197,6 @@ RoofClass::RoofClass()
 		m_nRoofState = OPEN;
 		DBPrintln("At close on startup");
 	}
-
-
-	// ESP32 ADC is 12 bit (0..4095), not 10 bit like the AVR it was ported from
-	m_fAdcConvert = RES_MULT * (AD_REF / 4095.0) * 100;
-
-	// reset all timers
-	m_periodicReadingTimer.reset();
 }
 
 void RoofClass::openInterrupt()
@@ -506,18 +495,7 @@ long RoofClass::getOpenPosition()
 
 long RoofClass::GetPosition()
 {
-	long position;
-	position = stepper->getCurrentPosition();
-#pragma message "FixMe"
-/*	if (m_nRoofState < CALIBRATION_MOVE_OFF) {
-		while (position >= m_Config.stepsPerStroke)
-			position -= m_Config.stepsPerStroke;
-
-		while (position < 0)
-			position += m_Config.stepsPerStroke;
-	}
-*/
-	return position;
+	return stepper->getCurrentPosition();
 }
 
 

@@ -19,7 +19,6 @@ const char RESET_ALL					= 'A'; // resets all setting to factory default
 const char CLOSE_ROOF                    = 'C'; // Close shutter
 const char ROOF_RESTORE_MOTOR_DEFAULT    = 'D'; // Restore default values for motor control.
 const char ACCELERATION_ROOF             = 'E'; // Get/Set stepper acceleration
-const char VOLTS_ROOF                    = 'K'; // Get volts and set cutoff voltage (close if bellow)
 const char STATE_ROOF                    = 'M'; // Get shutter state
 const char OPEN_ROOF                     = 'O'; // Open the shutter
 const char POSITION_ROOF                 = 'P'; // Get step position
