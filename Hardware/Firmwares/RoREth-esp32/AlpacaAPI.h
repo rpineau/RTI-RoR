@@ -1185,15 +1185,6 @@ void doFindHome(Request &req, Response &res)
 		return;
 	}
 
-	if(bLowShutterVoltage) {
-		AlpacaResp["ErrorNumber"] = 0x408;
-		AlpacaResp["ErrorMessage"] = "Low shutter voltage, staying at park position";
-		serializeJson(AlpacaResp, sResp);
-		res.write((uint8_t*)(sResp.c_str()),sResp.length());
-
-		return;
-	}
-
 	AlpacaResp["ErrorNumber"] = 0;
 	AlpacaResp["ErrorMessage"] = "";
 	// Roof->StartHoming();
@@ -1221,18 +1212,9 @@ void doOpenShutter(Request &req, Response &res)
 		return;
 	}
 
-	if(bLowShutterVoltage) {
-		AlpacaResp["ErrorNumber"] = 0x408;
-		AlpacaResp["ErrorMessage"] = "Low shutter voltage, staying at closed position";
-		serializeJson(AlpacaResp, sResp);
-		res.write((uint8_t*)(sResp.c_str()),sResp.length());
-
-	}
-	else {
 		AlpacaResp["ErrorNumber"] = 0;
 		AlpacaResp["ErrorMessage"] = "";
 		Roof->Open();
-	}
 	serializeJson(AlpacaResp, sResp);
 	DBPrintln("sResp : " + sResp);
 	res.write((uint8_t*)(sResp.c_str()),sResp.length());
@@ -1341,15 +1323,6 @@ void doGoTo(Request &req, Response &res)
 	if(!bParamsOk){
 		AlpacaResp["ErrorNumber"] = 0x401;
 		AlpacaResp["ErrorMessage"] = "Invalid parameters";
-		serializeJson(AlpacaResp, sResp);
-		res.write((uint8_t*)(sResp.c_str()),sResp.length());
-
-		return;
-	}
-
-	if(bLowShutterVoltage) {
-		AlpacaResp["ErrorNumber"] = 0x408;
-		AlpacaResp["ErrorMessage"] = "Low shutter voltage, staying at park position";
 		serializeJson(AlpacaResp, sResp);
 		res.write((uint8_t*)(sResp.c_str()),sResp.length());
 
@@ -1716,63 +1689,6 @@ void restoreMotorValues(Request &req, Response &res)
 	res.write((uint8_t*)(sResp.c_str()),sResp.length());
 }
 
-
-void roofVoltageValue(Request &req, Response &res)
-{
-	JsonDocument controllerResp;
-	String sResp;
-
-	if(req.method() == Request::PUT) {
-		JsonDocument FormData;
-		formDataToJson(req, FormData);
-		if(FormData.size()==0){
-		}
-		else {
-			if(FormData["value"].is<long>()) {
-				Roof->SetLowVoltageCutoff(FormData["value"]);
-			}
-		}
-	}
-
-	controllerResp["value"] = Roof->GetVoltString();
-	serializeJson(controllerResp, sResp);
-	DBPrintln("sResp : " + sResp);
-
-	res.set("Content-Type", "application/json");
-	res.write((uint8_t*)(sResp.c_str()),sResp.length());
-}
-
-void roofVoltageCutoffValue(Request &req, Response &res)
-{
-	JsonDocument jsonResp;
-	String sResp;
-
-	if(req.method() == Request::PUT) {
-		JsonDocument FormData;
-		formDataToJson(req, FormData);
-		if(FormData.size()==0){
-			AlpacaError_x401(jsonResp, res);
-			return;
-		}
-		else {
-			if(FormData["value"].is<long>()) {
-				Roof->SetLowVoltageCutoff(FormData["value"]);
-			}
-		}
-	}
-
-	jsonResp["value"] = Roof->GetLowVoltageCutoff();
-	serializeJson(jsonResp, sResp);
-	DBPrintln(String(__func__) + " : sResp : " + sResp);
-
-	res.set("Content-Type", "application/json");
-	res.write((uint8_t*)(sResp.c_str()),sResp.length());
-
-}
-
-
-
-
 #pragma message FIXME
 void unsafeAction(Request &req, Response &res)
 {
@@ -2010,8 +1926,6 @@ void DomeAlpacaServer::startServer()
 	m_AlpacaRestServer->use("/setup/roofAcceleration", &roofAccelerationValue);
 	m_AlpacaRestServer->put("/setup/restoreMotorSettings", &restoreMotorValues);
 	m_AlpacaRestServer->use("/setup/unsafeAction", &unsafeAction);
-	m_AlpacaRestServer->use("/setup/roofVoltageCutoff", &roofVoltageCutoffValue);
-	m_AlpacaRestServer->get("/setup/roofVoltage", &roofVoltageValue);
 	m_AlpacaRestServer->get("/setup/envCondition", &envConditionState);
 
 		// special endpoint to control the dome directly

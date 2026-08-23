@@ -432,55 +432,6 @@ paths:
       tags:
       - Roof Controller
 
-  /setup/roofVoltageCutoff:
-    get:
-      summary: Get the controller voltage cutoff
-      description: 'Retrieve the controller voltage.'
-      operationId: getRoofCutOff
-      responses:
-        '200':
-          description: Roof controller voltage
-        '400':
-          $ref: '#/components/responses/Response400'
-      tags:
-      - Roof Controller
-    put:
-      summary: Set the roof controller voltage cutoff
-      description: 'Set the roof controller voltage cutoff.
-        If the voltage get to this value or bellow, the roof will close.'
-      operationId: setRoofCutOff
-      responses:
-        '200':
-          description: Roof controller voltage cutoff successfully set
-        '400':
-          $ref: '#/components/responses/Response400'
-      tags:
-      - Roof Controller
-      requestBody:
-        required: true
-        content:
-          application/x-www-form-urlencoded:
-            schema:
-              type: object
-              properties:
-                value:
-                  type: integer
-              required:
-              - value
-
-  /setup/roofVoltage:
-    get:
-      summary: Get the controller voltage
-      description: 'Retrieve the controller voltage.'
-      operationId: getRoofVoltage
-      responses:
-        '200':
-          description: Roof controller voltage
-        '400':
-          $ref: '#/components/responses/Response400'
-      tags:
-      - Roof Controller
-
   /setup/openRoof:
     put:
       summary: Open the roof

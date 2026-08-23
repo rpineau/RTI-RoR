@@ -28,7 +28,6 @@ typedef struct RoofConfiguration {
 	long            acceleration;
 	long            maxSpeed;
 	bool            reversed;
-	int             cutOffVolts;
 	IPConfig        ipConfig;
 } Configuration;
 
@@ -74,12 +73,6 @@ public:
 	void        restoreDefaultMotorSettings();
 
 	double      GetAngularDistance(const double fromAngle, const double toAngle);
-
-	// Voltage methods
-	int         GetLowVoltageCutoff();
-	void        SetLowVoltageCutoff(const int);
-	bool        GetVoltsAreLow();
-	String      GetVoltString();
 
 	int         getRoofState();
 
@@ -144,12 +137,6 @@ private:
 	double m_dAz = 0;
 	double m_dParkAz = 0;
 
-	// Power values
-	double           m_fAdcConvert;
-	int             m_nVolts;
-	int             MeasureVoltage();
-
-
 	StopWatch       m_periodicReadingTimer;
 	unsigned long   m_nNextPeriodicReadingLapse = 10;
 
@@ -170,22 +157,21 @@ RoofClass::RoofClass()
 	m_nMoveDirection = MOVE_NONE;
 	// input
 
-	pinMode(OPEN_PIN,               INPUT_PULLUP);
-	pinMode(CLOSE_PIN,               INPUT_PULLUP);
-	pinMode(BUTTON_CLOSE,             INPUT_PULLUP);
-	pinMode(BUTTON_OPEN,              INPUT_PULLUP);
-	pinMode(COND_SENSOR_PIN,        INPUT_PULLUP);
-	pinMode(VOLTAGE_MONITOR_PIN,    INPUT);   // never INPUT_PULLUP on a divider input
+	pinMode(OPEN_PIN,				INPUT);
+	pinMode(CLOSE_PIN,				INPUT);
+	pinMode(BUTTON_CLOSE,			INPUT);
+	pinMode(BUTTON_OPEN,			INPUT);
+	pinMode(COND_SENSOR_PIN,		INPUT);
 
-	pinMode(SPARE1,    INPUT_PULLUP);
-	pinMode(SPARE2,    INPUT_PULLUP);
+	pinMode(SPARE1,					INPUT);
+	pinMode(SPARE2,					INPUT);
 
 	// output
-	pinMode(STEP_PIN,               OUTPUT);
-	pinMode(DIRECTION_PIN,          OUTPUT);
-	pinMode(STEPPER_ENABLE_PIN,     OUTPUT);
-	pinMode(SPARE_OUT1,     		OUTPUT);
-	pinMode(SPARE_OUT2,     		OUTPUT);
+	pinMode(STEP_PIN,				OUTPUT);
+	pinMode(DIRECTION_PIN,			OUTPUT);
+	pinMode(STEPPER_ENABLE_PIN,		OUTPUT);
+	pinMode(SPARE_OUT1,				OUTPUT);
+	pinMode(SPARE_OUT2,				OUTPUT);
 
 	LoadConfig();
 
@@ -317,8 +303,6 @@ void RoofClass::LoadConfig()
 	m_Config.acceleration = m_preferences.getLong("acceleration",ACCELERATION);
 	m_Config.maxSpeed = m_preferences.getLong("maxSpeed",MAX_SPEED);
 	m_Config.reversed = m_preferences.getBool("reverse", false);
-	m_Config.cutOffVolts = m_preferences.getInt("cutOffVolts",1150);
-
 	m_Config.ipConfig.bUseDHCP = m_preferences.getBool("bUseDHCP", true);
 	m_Config.ipConfig.ip.fromString(m_preferences.getString("ip","192.168.0.99"));
 	m_Config.ipConfig.dns.fromString(m_preferences.getString("dns","192.168.0.1"));
@@ -330,7 +314,6 @@ void RoofClass::LoadConfig()
 	DBPrintln("stepsPerStroke    : " + String(m_Config.stepsPerStroke));
 	DBPrintln("openPos           : " + String(m_Config.openPos));
 	DBPrintln("reversed          : " + String(m_Config.reversed));
-	DBPrintln("cutOffVolts       : " + String(m_Config.cutOffVolts));
 	DBPrintln("ipConfig.bUseDHCP : " + String(m_Config.ipConfig.bUseDHCP?"Yes":"No"));
 	DBPrintln("ipConfig.ip       : " + IpAddress2String(m_Config.ipConfig.ip));
 	DBPrintln("ipConfig.dns      : " + IpAddress2String(m_Config.ipConfig.dns));
@@ -582,51 +565,6 @@ void RoofClass::restoreDefaultMotorSettings()
 }
 
 
-//
-// Voltage methods
-//
-int RoofClass::GetLowVoltageCutoff()
-{
-	return m_Config.cutOffVolts;
-}
-
-void RoofClass::SetLowVoltageCutoff(const int lowVolts)
-{
-	m_Config.cutOffVolts = lowVolts;
-	m_preferences.begin("RTI_RoR", false);
-	m_preferences.putInt("cutOffVolts", lowVolts);
-	m_preferences.end();
-}
-
-inline bool RoofClass::GetVoltsAreLow()
-{
-	bool voltsLow = false;
-
-	if (m_nVolts <= m_Config.cutOffVolts)
-		voltsLow = true;
-	return voltsLow;
-}
-
-inline String RoofClass::GetVoltString()
-{
-	return String(m_nVolts) + "," + String(m_Config.cutOffVolts);
-}
-
-int RoofClass::MeasureVoltage()
-{
-	uint32_t sum = 0;
-	const int nSamples = 32;
-
-	// Average several conversions. The ESP32 SAR ADC is noisy, and the
-	// 400k/100k divider presents a high source impedance, so the sampling
-	// capacitor needs time to settle between reads.
-	for(int i = 0; i < nSamples; i++) {
-		sum += analogRead(VOLTAGE_MONITOR_PIN);
-		delayMicroseconds(50);
-	}
-
-	return int((double(sum) / nSamples) * m_fAdcConvert + 0.5);
-}
 
 int RoofClass::getRoofState()
 {
@@ -730,10 +668,6 @@ void RoofClass::GotoPosition(const long nPos)
 
 void RoofClass::Open()
 {
-	m_nVolts = MeasureVoltage();
-	if(GetVoltsAreLow()) // do not try to open if we're already at low voltage
-		return;
-
 	if (digitalRead(OPEN_PIN) == 0) {
 		m_nRoofState = OPEN;
 		return;
@@ -784,15 +718,8 @@ bool RoofClass::isRunning()
 
 void RoofClass::Run()
 {
-	// position must be seeded here: the FINISHING_* branches below read it,
-	// and those states are mutually exclusive with the NOT_MOVING branch that
-	// used to be the only place it was assigned.
 	long position = stepper->getCurrentPosition();
 
-	if (m_periodicReadingTimer.elapsed() >= m_nNextPeriodicReadingLapse) {
-		m_nVolts = MeasureVoltage();
-		m_periodicReadingTimer.reset();
-	}
 #pragma message "FixMe"
 
 	if (m_nRoofState >= CALIBRATION_STEP_RESET)

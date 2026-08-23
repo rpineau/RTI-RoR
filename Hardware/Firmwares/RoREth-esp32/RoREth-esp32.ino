@@ -49,8 +49,6 @@ RoofClass *Roof = NULL;
 
 // global variable for conditon status
 volatile bool bIsSafe;
-// global variable for shutter voltage state
-volatile bool bLowShutterVoltage;
 
 const char ERR_NO_DATA = -1;
 
@@ -94,8 +92,6 @@ void setup()
 {
 	ethernetPresent = false;
 	bIsSafe = false;
-	bLowShutterVoltage = false;
-
 	nbNetworkClient = 0;
 
 #ifdef DEBUG
@@ -600,11 +596,7 @@ void ProcessCommand(int nSource)
 
 		case OPEN_ROOF:
 			serialMessage = String(OPEN_ROOF);
-			if(Roof->GetVoltsAreLow())
-				serialMessage += "L";
-			else {
-				Roof->Open();
-			}
+			Roof->Open();
 			break;
 
 		case REVERSED_ROOF:
@@ -632,13 +624,6 @@ void ProcessCommand(int nSource)
 
 		case VERSION_ROOF:
 			serialMessage = String(VERSION_ROOF) + VERSION;
-			break;
-
-		case VOLTS_ROOF:
-			if (hasValue) {
-				Roof->SetLowVoltageCutoff(value.toInt());
-			}
-			serialMessage = String(VOLTS_ROOF) + String(Roof->GetVoltString());
 			break;
 
 		default:
