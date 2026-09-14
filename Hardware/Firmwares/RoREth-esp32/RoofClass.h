@@ -125,11 +125,12 @@ private:
 	int				m_nRoofState;
 	bool            m_bDoStepsPerStroke;
 
-	StopWatch       m_MoveOffUntilTimer;
+	bool			bOpenButtonPressed = false;
+	bool			bCloseButtonPressed = false;
 	unsigned long   m_nMOVE_OFFUntilLapse = 2000;
 
 	int             m_nMoveDirection;
-	volatile long	m_nStepsAtOpen;
+	volatile long	m_nStepsAtOpen = STEPS_DEFAULT;
 	volatile long	m_nHomePosEdgePass1;
 	volatile 	long	m_nHomePosEdgePass2;
 
@@ -178,7 +179,6 @@ RoofClass::RoofClass()
 	stepper->setAutoEnable(true);
 	stepper->setSpeedInHz(m_Config.maxSpeed);  //  steps/s
 	stepper->setAcceleration(m_Config.acceleration);    //  steps/s²
-	SetStepsPerStroke(m_Config.stepsPerStroke, false);
 
 	if (digitalRead(COND_SENSOR_PIN) == LOW) {
 		m_bIsSafe = false;
@@ -190,12 +190,14 @@ RoofClass::RoofClass()
 	if(digitalRead(CLOSE_PIN) == LOW) {
 		// we're at the close position
 		m_nRoofState = CLOSED;
+		stepper->setCurrentPosition(0L);
 		DBPrintln("At close on startup");
 	}
 	else if(digitalRead(OPEN_PIN) == LOW) {
 		// we're at the open position
 		m_nRoofState = OPEN;
-		DBPrintln("At close on startup");
+		stepper->setCurrentPosition(m_Config.stepsPerStroke);
+		DBPrintln("At Open on startup");
 	}
 }
 
@@ -211,15 +213,15 @@ void RoofClass::openInterrupt()
 
 	switch(m_nRoofState) {
 
-		case OPENING: // stop and take note of where we are so we can reverse.
+		case OPENING:
 			// at open position = nPos;
 			motorStop();
 			m_nRoofState = FINISHING_OPENING;
 			break;
 
-		case CALIBRATION_STEP_OPENING: // take note of the first edge
+		case CALIBRATION_STEP_OPENING:
 			motorStop();
-			m_nRoofState = CALIBRATION_STEP_OPEN; // let's not be fooled by the double trigger
+			m_nRoofState = CALIBRATION_MEASURE; // let's not be fooled by the double trigger
 			break;
 
 		case CALIBRATION_MEASURE: // stop and take note of where we are so we can reverse.
@@ -288,7 +290,7 @@ void RoofClass::LoadConfig()
 		m_preferences.putBool("nvsInit", true);
 	}
 	m_Config.stepsPerStroke = m_preferences.getLong("stepsPerStroke",STEPS_DEFAULT);
-	m_Config.openPos = m_preferences.getLong("openPos",160000000L);
+	m_Config.openPos = m_preferences.getLong("openPos",STEPS_DEFAULT);
 	m_Config.acceleration = m_preferences.getLong("acceleration",ACCELERATION);
 	m_Config.maxSpeed = m_preferences.getLong("maxSpeed",MAX_SPEED);
 	m_Config.reversed = m_preferences.getBool("reverse", false);
@@ -556,7 +558,6 @@ void RoofClass::StartCalibrating()
 
 	if (digitalRead(CLOSE_PIN) == 0) {
 		m_nRoofState = CLOSED;
-		m_MoveOffUntilTimer.reset();
 	}
 	if (digitalRead(OPEN_PIN) == 0) {
 		m_nRoofState = OPEN;
@@ -564,41 +565,32 @@ void RoofClass::StartCalibrating()
 
 	// are we open, closed or somewhere in between ?
 	if (m_nRoofState != CLOSED ) { // close to restart calibration from close state
-		MoveRelative(-1073741823L); // move toward close position
+		MoveRelative(-STEPS_DEFAULT); // move toward close position
 		m_nRoofState = CALIBRATION_STEP_RESET;
 	}
 	else {
 		stepper->setCurrentPosition(0);
 		m_nRoofState = CALIBRATION_STEP_OPENING;
-		MoveRelative(1073741823L); // move toward open position
+		MoveRelative(STEPS_DEFAULT); // move toward open position
 	}
 
-	m_MoveOffUntilTimer.reset();
 	m_bDoStepsPerStroke = false;
 }
 
 void RoofClass::Calibrate()
 {
-#pragma message "FixMe"
-
 	switch (m_nRoofState) {
 		case(CALIBRATION_STEP_RESET):
-			//if(m_MoveOffUntilTimer.elapsed() <= m_nMOVE_OFFUntilLapse)
-			//	break;
 			if (!stepper->isRunning()) {
 				m_nRoofState = CALIBRATION_STEP_OPENING;
 				stepper->setCurrentPosition(0);
-				MoveRelative(1073741823L);
+				MoveRelative(STEPS_DEFAULT);
 			}
-			break;
-
-		case(CALIBRATION_STEP_OPEN):
-				m_nRoofState = CALIBRATION_MEASURE;
 			break;
 
 		case(CALIBRATION_MEASURE):
 			if (!stepper->isRunning()) { // we have to wait for it to have stopped
-				SetStepsPerStroke(stepper->getCurrentPosition());
+				SetStepsPerStroke(m_nStepsAtOpen);
 			}
 			break;
 		default:
@@ -670,22 +662,28 @@ void RoofClass::Close()
 
 void RoofClass::ButtonOpenCheck()
 {
+	bOpenButtonPressed = true;
+/*
 	if (digitalRead(BUTTON_OPEN) == LOW) {
 		MoveRelative(160000000L);
 	}
 	else {
 		motorStop();
 	}
+*/
 }
 
 void RoofClass::ButtonCloseCheck()
 {
+	bCloseButtonPressed = true;
+/*
 	if (digitalRead(BUTTON_CLOSE) == LOW)  {
 		MoveRelative(-160000000L);
 	}
 	else {
 		motorStop();
 	}
+*/
 }
 
 bool RoofClass::isRunning()
@@ -698,10 +696,28 @@ void RoofClass::Run()
 {
 	long position = stepper->getCurrentPosition();
 
-#pragma message "FixMe"
-
 	if (m_nRoofState >= CALIBRATION_STEP_RESET)
 		Calibrate();
+
+	if(bOpenButtonPressed) {
+		bOpenButtonPressed = false;
+		if(m_nRoofState == OPENING || m_nRoofState >= CALIBRATION_STEP_RESET) {
+			Stop();
+		}
+		else {
+			Open();
+		}
+	}
+	if(bCloseButtonPressed) {
+		bCloseButtonPressed = false;
+		if(m_nRoofState == CLOSING) {
+			Stop();
+		}
+		else {
+			Close();
+		}
+
+	}
 
 	if (stepper->isRunning()) {
 		m_bWasRunning = true;
@@ -735,6 +751,7 @@ void RoofClass::Run()
 			if(digitalRead(CLOSE_PIN) == LOW) {
 				// we're at the close position
 				m_nRoofState = CLOSED;
+				stepper->setCurrentPosition(0L);
 			}
 			if(digitalRead(OPEN_PIN) == LOW) {
 				// we're at the open position
@@ -746,19 +763,24 @@ void RoofClass::Run()
 		if(m_nRoofState == FINISHING_CLOSING) {
 			if(digitalRead(CLOSE_PIN) != LOW) {
 				// not quite close. move a bit more.
-				if(position == 0)
+				if(position == 0) {
 					position = 1000;
+					stepper->setCurrentPosition(position);
+				}
 				Close();
 			}
 			else {
+				stepper->setCurrentPosition(0L); // closed is position 0
 				m_nRoofState = NOT_MOVING;
 			}
 		}
 
 		if(m_nRoofState == FINISHING_OPENING) {
 			if(digitalRead(OPEN_PIN) != LOW) {
-				if(position == m_Config.stepsPerStroke)
+				if(position == m_Config.stepsPerStroke) {
 					m_Config.stepsPerStroke +=1000;
+					stepper->setCurrentPosition(position);
+				}
 				m_bDoStepsPerStroke = true; // adjust open position value
 				Open();
 			}
