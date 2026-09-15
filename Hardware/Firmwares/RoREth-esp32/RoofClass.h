@@ -214,19 +214,15 @@ void RoofClass::openInterrupt()
 	switch(m_nRoofState) {
 
 		case OPENING:
-			// at open position = nPos;
 			motorStop();
 			m_nRoofState = FINISHING_OPENING;
 			break;
 
 		case CALIBRATION_STEP_OPENING:
+			// at open position = nPos;
 			motorStop();
-			m_nRoofState = CALIBRATION_MEASURE; // let's not be fooled by the double trigger
-			break;
-
-		case CALIBRATION_MEASURE: // stop and take note of where we are so we can reverse.
+			m_nRoofState = CALIBRATION_STEP_OPEN;
 			m_nStepsAtOpen = nPos;
-			motorStop();
 			break;
 		default: // we need to set some sane default
 			break;
@@ -245,14 +241,14 @@ void RoofClass::closedInterrupt()
 	nPos = stepper->getCurrentPosition(); // read position immediately
 
 	switch(m_nRoofState) {
-		case CLOSING: // stop and take note of where we are so we can reverse.
+		case CLOSING: 
 			motorStop();
 			m_nRoofState = FINISHING_CLOSING;
 
 			// at close position = 0;
 			break;
 
-		case CALIBRATION_STEP_RESET: // take note of the first edge
+		case CALIBRATION_STEP_RESET:
 			motorStop();
 			// at close position = 0;
 			break;
@@ -595,7 +591,6 @@ void RoofClass::Calibrate()
 			break;
 		default:
 			break;
-
 	}
 }
 
@@ -721,18 +716,16 @@ void RoofClass::Run()
 
 	if (stepper->isRunning()) {
 		m_bWasRunning = true;
-		if (m_nRoofState == CALIBRATION_STEP_OPENING && m_nRoofState == OPEN) {
+		if (m_nRoofState == OPEN) {
+			motorStop();
+			return;
+		}
+		if (m_nRoofState == CALIBRATION_STEP_OPENING) {
 			motorStop();
 			m_nRoofState = CALIBRATION_STEP_OPEN;
 			return;
 		}
 		return;
-	}
-
-#pragma message "FixMe"
-
-	if( m_nRoofState == CALIBRATION_STEP_RESET) {
-		m_nRoofState = CALIBRATION_STEP_OPENING;
 	}
 
 	if (m_bDoStepsPerStroke) {
@@ -743,6 +736,20 @@ void RoofClass::Run()
 	}
 
 	if (m_bWasRunning) {
+		if(m_nRoofState == CALIBRATION_STEP_OPEN) {
+			if(digitalRead(OPEN_PIN) != LOW) {
+				if(position == m_Config.stepsPerStroke) {
+					m_Config.stepsPerStroke +=1000;
+					stepper->setCurrentPosition(position);
+				}
+				m_nRoofState = CALIBRATION_STEP_OPENING;
+				m_bDoStepsPerStroke = true; // adjust open position value
+				Open();
+			}
+			else { // openned and not moving anymore, store open position
+				m_nRoofState = CALIBRATION_MEASURE;
+			}
+		}
 		if( m_nRoofState == NOT_MOVING) {
 			// not moving anymore ..
 			m_nMoveDirection = MOVE_NONE;
@@ -791,7 +798,6 @@ void RoofClass::Run()
 
 		if(m_nRoofState == NOT_MOVING) {
 			m_nMoveDirection = MOVE_NONE;
-			position = stepper->getCurrentPosition();
 		}
 
 	} // end if (m_bWasRunning)
