@@ -538,17 +538,17 @@ components:
       type: integer
       description: Calibration states
       enum:
-      - 6
-      - 8
       - 0
+      - 1
+      - 2
       x-enum-varnames:
+      - NOT_CALIBRATED
       - CALIBRATING
-      - MEASURING
-      - IDLE
+      - CALIBRATED
       x-enum-descriptions:
-      - Controller is doing a rotation for step calibration
+      - Controller is not calibrated
       - Controller is measuring number of steps per rotation.
-      - Controller is idle.
+      - Controller is calibrated.
 
     UnsafeAction:
       type: integer

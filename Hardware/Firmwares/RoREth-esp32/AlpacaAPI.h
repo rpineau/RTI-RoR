@@ -1591,7 +1591,7 @@ void roofCalibrateAction(Request &req, Response &res)
 		}
 	}
 
-	controllerResp["value"] = String(RoofClass::IpAddress2String(RoR_Ethernet.gatewayIP()));
+	controllerResp["value"] = String(Roof->getRoofCalibrationState());
 	serializeJson(controllerResp, sResp);
 	DBPrintln("sResp : " + sResp);
 
@@ -1931,7 +1931,7 @@ void DomeAlpacaServer::startServer()
 	m_AlpacaRestServer->get("/setup/macAddress", &macAddressValue);
 	m_AlpacaRestServer->use("/setup/ipAddress", &ipAddressValue);
 	m_AlpacaRestServer->use("/setup/subnetMask", &subnetMaskValue);
-	m_AlpacaRestServer->use("/setup/ipGeteway", &ipGetewayValue);
+	m_AlpacaRestServer->use("/setup/ipGateway", &ipGetewayValue);
 	m_AlpacaRestServer->put("/setup/restoreNetworkDefaults", &restoreNetworkDefaults);
 
 	m_AlpacaRestServer->use("/setup/roofCalibrate", &roofCalibrateAction);
@@ -1943,9 +1943,9 @@ void DomeAlpacaServer::startServer()
 	m_AlpacaRestServer->get("/setup/envCondition", &envConditionState);
 
 		// special endpoint to control the dome directly
-	m_AlpacaRestServer->put("/setup/openShutter", &openRoof);
-	m_AlpacaRestServer->put("/setup/closeShutter", &closeRoof);
-	m_AlpacaRestServer->get("/setup/getShutterState", &getRoofState);
+	m_AlpacaRestServer->put("/setup/openRoof", &openRoof);
+	m_AlpacaRestServer->put("/setup/closeRoof", &closeRoof);
+	m_AlpacaRestServer->get("/setup/getRoofState", &getRoofState);
 
 	m_AlpacaRestServer->put("/setup/resetToFactory", &resetToFactory);
 	m_AlpacaRestServer->put("/setup/abort", &uiAbort);

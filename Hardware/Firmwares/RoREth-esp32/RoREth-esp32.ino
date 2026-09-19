@@ -148,7 +148,7 @@ void loop()
 {
 	if(firstLoop) {
 		firstLoop = false;
-		Computer.println("========== Rotator is Ready ==========");
+		Computer.println("========== Roll off roof is Ready ==========");
 	}
 
 	if(ethernetPresent) {
@@ -331,7 +331,7 @@ void checkForNewTCPClient()
 			nbNetworkClient++;
 			domeClient = newClient;
 			DBPrintln("new client accepted");
-			DBPrintln("nb client = " + String(nbEthernetClient));
+			DBPrintln("nb client = " + String(nbNetworkClient));
 		}
 	}
 

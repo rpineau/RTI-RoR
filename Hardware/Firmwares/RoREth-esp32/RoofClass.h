@@ -29,11 +29,13 @@ typedef struct RoofConfiguration {
 	long            maxSpeed;
 	bool            reversed;
 	IPConfig        ipConfig;
+	int				calibrationState;
 } Configuration;
 
 
 
 enum RoofStates { OPEN, CLOSED, NOT_MOVING, OPENING, CLOSING, ROOF_ERROR, FINISHING_OPENING, FINISHING_CLOSING, CALIBRATION_STEP_RESET, CALIBRATION_STEP_OPENING, CALIBRATION_STEP_OPEN, CALIBRATION_MEASURE};
+enum CalibrationState { NOT_CALIBRATED, CALIBRATING, CALIBRATED};
 
 FastAccelStepperEngine engine = FastAccelStepperEngine();
 FastAccelStepper *stepper = NULL;
@@ -79,6 +81,7 @@ public:
 	// Homing and Calibration
 	void        StartCalibrating();
 	void        Calibrate();
+	int			getRoofCalibrationState();
 
 	// Movers
 	void        MoveRelative(const long steps);
@@ -131,8 +134,7 @@ private:
 
 	int             m_nMoveDirection;
 	volatile long	m_nStepsAtOpen = STEPS_DEFAULT;
-	volatile long	m_nHomePosEdgePass1;
-	volatile 	long	m_nHomePosEdgePass2;
+	int				m_nCalibrationState = NOT_CALIBRATED;
 
 	// fake function varialbles.
 	double m_dAz = 0;
@@ -295,6 +297,7 @@ void RoofClass::LoadConfig()
 	m_Config.ipConfig.dns.fromString(m_preferences.getString("dns","192.168.0.1"));
 	m_Config.ipConfig.gateway.fromString(m_preferences.getString("gateway","192.168.0.1"));
 	m_Config.ipConfig.subnetMask.fromString(m_preferences.getString("subnetMask","255.255.255.0"));
+	m_Config.calibrationState = m_preferences.getLong("calibrationState",NOT_CALIBRATED); 
 
 	DBPrintln("maxSpeed          : " + String(m_Config.maxSpeed));
 	DBPrintln("acceleration      : " + String(m_Config.acceleration));
@@ -523,8 +526,6 @@ long RoofClass::GetStepsPerStroke()
 
 void RoofClass::SetStepsPerStroke(const long newCount, bool bSave)
 {
-#pragma message "FixMe"
-	// m_fStepsPerDegree = (double)newCount / 360.0;
 	m_Config.stepsPerStroke = newCount;
 	if(bSave) {
 		m_preferences.begin("RTI_RoR", false);
@@ -594,6 +595,10 @@ void RoofClass::Calibrate()
 	}
 }
 
+int RoofClass::getRoofCalibrationState()
+{
+	return m_nCalibrationState;
+}
 //
 // Movers
 //
