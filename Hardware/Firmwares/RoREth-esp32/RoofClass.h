@@ -82,6 +82,7 @@ public:
 	void        StartCalibrating();
 	void        Calibrate();
 	int			getRoofCalibrationState();
+	void		saveRoofCalibrationState();
 
 	// Movers
 	void        MoveRelative(const long steps);
@@ -297,7 +298,7 @@ void RoofClass::LoadConfig()
 	m_Config.ipConfig.dns.fromString(m_preferences.getString("dns","192.168.0.1"));
 	m_Config.ipConfig.gateway.fromString(m_preferences.getString("gateway","192.168.0.1"));
 	m_Config.ipConfig.subnetMask.fromString(m_preferences.getString("subnetMask","255.255.255.0"));
-	m_Config.calibrationState = m_preferences.getLong("calibrationState",NOT_CALIBRATED); 
+	m_Config.calibrationState = m_preferences.getInt("calibrationState",NOT_CALIBRATED); 
 
 	DBPrintln("maxSpeed          : " + String(m_Config.maxSpeed));
 	DBPrintln("acceleration      : " + String(m_Config.acceleration));
@@ -534,6 +535,12 @@ void RoofClass::SetStepsPerStroke(const long newCount, bool bSave)
 	}
 }
 
+void RoofClass::saveRoofCalibrationState()
+{
+	m_preferences.begin("RTI_RoR", false);
+	m_preferences.putInt("calibrationState", m_nCalibrationState);
+	m_preferences.end();
+}
 void RoofClass::restoreDefaultMotorSettings()
 {
 	SetMaxSpeed(MAX_SPEED);
@@ -570,6 +577,7 @@ void RoofClass::StartCalibrating()
 		m_nRoofState = CALIBRATION_STEP_OPENING;
 		MoveRelative(STEPS_DEFAULT); // move toward open position
 	}
+	m_nRoofState = CALIBRATING;
 
 	m_bDoStepsPerStroke = false;
 }
@@ -588,6 +596,8 @@ void RoofClass::Calibrate()
 		case(CALIBRATION_MEASURE):
 			if (!stepper->isRunning()) { // we have to wait for it to have stopped
 				SetStepsPerStroke(m_nStepsAtOpen);
+				m_nRoofState = CALIBRATED;
+				saveRoofCalibrationState();
 			}
 			break;
 		default:
