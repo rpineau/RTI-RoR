@@ -705,7 +705,7 @@ void RoofClass::Run()
 	}
 	if(bCloseButtonPressed) {
 		bCloseButtonPressed = false;
-		if(m_nRoofState == CLOSING) {
+		if(m_nRoofState == CLOSING || m_nRoofState >= CALIBRATION_STEP_RESET) {
 			Stop();
 		}
 		else {
