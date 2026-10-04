@@ -177,8 +177,8 @@ void MotorTask(void *)
 	DBPrintln("========== Motor task Attaching interrupt handler ==========");
 	attachInterrupt(digitalPinToInterrupt(CLOSE_PIN), closeIntHandler, FALLING);
 	attachInterrupt(digitalPinToInterrupt(OPEN_PIN), openIntHandler, FALLING);
-	attachInterrupt(digitalPinToInterrupt(BUTTON_CLOSE), buttonCloseHandler, CHANGE);
-	attachInterrupt(digitalPinToInterrupt(BUTTON_OPEN), buttonOpenHandler, CHANGE);
+	attachInterrupt(digitalPinToInterrupt(BUTTON_CLOSE), buttonCloseHandler, FALLING);
+	attachInterrupt(digitalPinToInterrupt(BUTTON_OPEN), buttonOpenHandler, FALLING);
 	attachInterrupt(digitalPinToInterrupt(COND_SENSOR_PIN), conditionIntHandler, CHANGE);
 
 	esp_task_wdt_add(NULL);
@@ -602,6 +602,10 @@ void ProcessCommand(int nSource)
 			serialMessage = String(ROOF_RESTORE_MOTOR_DEFAULT);
 			break;
 
+		case POSITION_ROOF:
+			serialMessage = String(POSITION_ROOF) + String(Roof->GetPosition());
+			break;
+
 		case OPEN_ROOF:
 			serialMessage = String(OPEN_ROOF);
 			Roof->Open();
@@ -665,6 +669,6 @@ void Abort()
 {
 	String shutterMessage;
 	if(Roof) {
-		Roof->motorStop();
+		Roof->Stop();
 	}
 }

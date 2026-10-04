@@ -34,8 +34,8 @@ typedef struct RoofConfiguration {
 
 
 
-enum RoofStates { OPEN, CLOSED, NOT_MOVING, OPENING, CLOSING, ROOF_ERROR, FINISHING_OPENING, FINISHING_CLOSING, CALIBRATION_STEP_RESET, CALIBRATION_STEP_OPENING, CALIBRATION_STEP_OPEN, CALIBRATION_MEASURE};
-enum CalibrationState { NOT_CALIBRATED, CALIBRATING, CALIBRATED};
+enum RoofStates { OPEN, CLOSED, NOT_MOVING, OPENING, CLOSING, ROOF_ERROR, FINISHING_OPENING, FINISHING_CLOSING};
+enum CalibrationState { NOT_CALIBRATED, CALIBRATION_STEP_RESET, CALIBRATION_STEP_OPENING, CALIBRATION_STEP_OPEN, CALIBRATION_MEASURE, CALIBRATED};
 
 FastAccelStepperEngine engine = FastAccelStepperEngine();
 FastAccelStepper *stepper = NULL;
@@ -127,7 +127,6 @@ private:
 	// Roof movement
 	bool            m_bWasRunning;
 	int				m_nRoofState;
-	bool            m_bDoStepsPerStroke;
 
 	bool			bOpenButtonPressed = false;
 	bool			bCloseButtonPressed = false;
@@ -153,7 +152,6 @@ RoofClass::RoofClass()
 
 	m_nRoofState = NOT_MOVING;
 	m_bWasRunning = false;
-	m_bDoStepsPerStroke = false;
 	m_nMoveDirection = MOVE_NONE;
 	// input
 
@@ -212,25 +210,18 @@ void RoofClass::openInterrupt()
 	if (digitalRead(OPEN_PIN) != LOW)
 		return;
 
-	nPos = stepper->getCurrentPosition(); // read position immediately
-
 	switch(m_nRoofState) {
-
 		case OPENING:
 			motorStop();
 			m_nRoofState = FINISHING_OPENING;
+			if(m_nCalibrationState ==  CALIBRATION_STEP_OPENING) {
+				m_nCalibrationState = CALIBRATION_STEP_OPEN;
+			}
 			break;
 
-		case CALIBRATION_STEP_OPENING:
-			// at open position = nPos;
-			motorStop();
-			m_nRoofState = CALIBRATION_STEP_OPEN;
-			m_nStepsAtOpen = nPos;
-			break;
 		default: // we need to set some sane default
 			break;
 	}
-
 }
 
 void RoofClass::closedInterrupt()
@@ -244,15 +235,9 @@ void RoofClass::closedInterrupt()
 	nPos = stepper->getCurrentPosition(); // read position immediately
 
 	switch(m_nRoofState) {
-		case CLOSING: 
+		case CLOSING:
 			motorStop();
 			m_nRoofState = FINISHING_CLOSING;
-
-			// at close position = 0;
-			break;
-
-		case CALIBRATION_STEP_RESET:
-			motorStop();
 			// at close position = 0;
 			break;
 
@@ -298,7 +283,7 @@ void RoofClass::LoadConfig()
 	m_Config.ipConfig.dns.fromString(m_preferences.getString("dns","192.168.0.1"));
 	m_Config.ipConfig.gateway.fromString(m_preferences.getString("gateway","192.168.0.1"));
 	m_Config.ipConfig.subnetMask.fromString(m_preferences.getString("subnetMask","255.255.255.0"));
-	m_Config.calibrationState = m_preferences.getInt("calibrationState",NOT_CALIBRATED); 
+	m_Config.calibrationState = m_preferences.getInt("calibrationState",NOT_CALIBRATED);
 
 	DBPrintln("maxSpeed          : " + String(m_Config.maxSpeed));
 	DBPrintln("acceleration      : " + String(m_Config.acceleration));
@@ -527,10 +512,15 @@ long RoofClass::GetStepsPerStroke()
 
 void RoofClass::SetStepsPerStroke(const long newCount, bool bSave)
 {
+ 	DBPrintln("[ ********** " + String(__func__) + " ********** ]");
+ 	DBPrintln("newCount = " + String(newCount));
+
 	m_Config.stepsPerStroke = newCount;
+
+ 	DBPrintln("m_Config.stepsPerStroke = " + String(m_Config.stepsPerStroke));
 	if(bSave) {
 		m_preferences.begin("RTI_RoR", false);
-		m_preferences.putBool("stepsPerStroke", newCount);
+		m_preferences.putLong("stepsPerStroke", newCount);
 		m_preferences.end();
 	}
 }
@@ -558,6 +548,7 @@ int RoofClass::getRoofState()
 
 void RoofClass::StartCalibrating()
 {
+ 	DBPrintln("[ ********** " + String(__func__) + " ********** ]");
 	m_nRoofState = NOT_MOVING;
 
 	if (digitalRead(CLOSE_PIN) == 0) {
@@ -569,35 +560,48 @@ void RoofClass::StartCalibrating()
 
 	// are we open, closed or somewhere in between ?
 	if (m_nRoofState != CLOSED ) { // close to restart calibration from close state
+		DBPrintln("Closing for calibration");
+		m_nCalibrationState = CALIBRATION_STEP_RESET;
+		m_nRoofState = CLOSING;
 		MoveRelative(-STEPS_DEFAULT); // move toward close position
-		m_nRoofState = CALIBRATION_STEP_RESET;
 	}
 	else {
 		stepper->setCurrentPosition(0);
-		m_nRoofState = CALIBRATION_STEP_OPENING;
+		DBPrintln("Opening for calibration");
+		DBPrintln("m_nCalibrationState = CALIBRATION_STEP_OPENING");
+		m_nCalibrationState = CALIBRATION_STEP_OPENING;
+		m_nRoofState = OPENING;
 		MoveRelative(STEPS_DEFAULT); // move toward open position
 	}
-	m_nRoofState = CALIBRATING;
-
-	m_bDoStepsPerStroke = false;
+	DBPrintln("m_nRoofState " + String(m_nRoofState));
+	DBPrintln("m_nCalibrationState " + String(m_nCalibrationState));
 }
 
 void RoofClass::Calibrate()
 {
-	switch (m_nRoofState) {
+	int position;
+
+	switch (m_nCalibrationState) {
 		case(CALIBRATION_STEP_RESET):
-			if (!stepper->isRunning()) {
-				m_nRoofState = CALIBRATION_STEP_OPENING;
+			if (m_nRoofState == CLOSED) {
+	DBPrintln("[ ********** " + String(__func__) + " ********** ]");
+				DBPrintln("CALIBRATION_STEP_OPENING");
+				m_nCalibrationState = CALIBRATION_STEP_OPENING;
+				m_nRoofState = OPENING;
 				stepper->setCurrentPosition(0);
 				MoveRelative(STEPS_DEFAULT);
 			}
 			break;
 
 		case(CALIBRATION_MEASURE):
-			if (!stepper->isRunning()) { // we have to wait for it to have stopped
-				SetStepsPerStroke(m_nStepsAtOpen);
-				m_nRoofState = CALIBRATED;
+			if (m_nRoofState == NOT_MOVING) { // we have to wait for it to have stopped
+	DBPrintln("[ ********** " + String(__func__) + " ********** ]");
+				DBPrintln("CALIBRATION_MEASURE");
+				m_nCalibrationState = CALIBRATED;
 				saveRoofCalibrationState();
+				position = stepper->getCurrentPosition();
+				SetStepsPerStroke(position);
+				DBPrintln("CALIBRATION_MEASURE steps per move = " + String(position));
 			}
 			break;
 		default:
@@ -615,6 +619,7 @@ int RoofClass::getRoofCalibrationState()
 
 void RoofClass::MoveRelative(const long howFar)
 {
+	DBPrintln("[ ********** " + String(__func__) + " ********** ]");
 	m_nMoveDirection = MOVE_NEGATIVE;
 	if (howFar > 0)
 		m_nMoveDirection = MOVE_POSITIVE;
@@ -654,7 +659,7 @@ void RoofClass::Open()
 	}
 
 	m_nRoofState = OPENING;
-	DBPrintln("shutterState = OPENING");
+	DBPrintln("m_nRoofState = OPENING");
 	GotoPosition(m_Config.stepsPerStroke);
 }
 
@@ -665,35 +670,23 @@ void RoofClass::Close()
 		return;
 	}
 	m_nRoofState = CLOSING;
-	DBPrintln("shutterState = CLOSING");
-	GotoPosition(0L); // close
+	DBPrintln("m_nRoofState = CLOSING");
+	// if we are at position "0" but not closed :
+	if(stepper->getCurrentPosition() == 0)
+		GotoPosition(-STEPS_DEFAULT); // Force close
+	else
+		GotoPosition(0L); // close
 }
 
 
 void RoofClass::ButtonOpenCheck()
 {
 	bOpenButtonPressed = true;
-/*
-	if (digitalRead(BUTTON_OPEN) == LOW) {
-		MoveRelative(160000000L);
-	}
-	else {
-		motorStop();
-	}
-*/
 }
 
 void RoofClass::ButtonCloseCheck()
 {
 	bCloseButtonPressed = true;
-/*
-	if (digitalRead(BUTTON_CLOSE) == LOW)  {
-		MoveRelative(-160000000L);
-	}
-	else {
-		motorStop();
-	}
-*/
 }
 
 bool RoofClass::isRunning()
@@ -706,12 +699,12 @@ void RoofClass::Run()
 {
 	long position = stepper->getCurrentPosition();
 
-	if (m_nRoofState >= CALIBRATION_STEP_RESET)
+	if (m_nCalibrationState >= NOT_CALIBRATED && m_nCalibrationState!=CALIBRATED)
 		Calibrate();
 
 	if(bOpenButtonPressed) {
 		bOpenButtonPressed = false;
-		if(m_nRoofState == OPENING || m_nRoofState >= CALIBRATION_STEP_RESET) {
+		if(m_nRoofState == OPENING || m_nCalibrationState >= CALIBRATION_STEP_RESET) {
 			Stop();
 		}
 		else {
@@ -720,7 +713,7 @@ void RoofClass::Run()
 	}
 	if(bCloseButtonPressed) {
 		bCloseButtonPressed = false;
-		if(m_nRoofState == CLOSING || m_nRoofState >= CALIBRATION_STEP_RESET) {
+		if(m_nRoofState == CLOSING || m_nCalibrationState >= CALIBRATION_STEP_RESET) {
 			Stop();
 		}
 		else {
@@ -731,41 +724,34 @@ void RoofClass::Run()
 
 	if (stepper->isRunning()) {
 		m_bWasRunning = true;
-		if (m_nRoofState == OPEN) {
-			motorStop();
-			return;
-		}
-		if (m_nRoofState == CALIBRATION_STEP_OPENING) {
-			motorStop();
-			m_nRoofState = CALIBRATION_STEP_OPEN;
-			return;
-		}
 		return;
 	}
 
-	if (m_bDoStepsPerStroke) {
-		m_bDoStepsPerStroke = false;
-		// we count from close, close is 0, full open is the current position
-		position = stepper->getCurrentPosition();
-		SetStepsPerStroke(position);
-	}
 
 	if (m_bWasRunning) {
-		if(m_nRoofState == CALIBRATION_STEP_OPEN) {
+		DBPrintln("[ ********** " + String(__func__) + " ********** ]");
+		DBPrintln("m_nRoofState " + String(m_nRoofState));
+		DBPrintln("m_nCalibrationState " + String(m_nCalibrationState));
+
+		if(m_nCalibrationState == CALIBRATION_STEP_OPEN) {
+			DBPrintln("[ ********** " + String(__func__) + " ********** ]");
+			DBPrintln("CALIBRATION_STEP_OPEN");
 			if(digitalRead(OPEN_PIN) != LOW) {
 				if(position == m_Config.stepsPerStroke) {
 					m_Config.stepsPerStroke +=1000;
 					stepper->setCurrentPosition(position);
 				}
-				m_nRoofState = CALIBRATION_STEP_OPENING;
-				m_bDoStepsPerStroke = true; // adjust open position value
+				m_nCalibrationState = CALIBRATION_STEP_OPENING;
 				Open();
 			}
-			else { // openned and not moving anymore, store open position
-				m_nRoofState = CALIBRATION_MEASURE;
+			else { // opened and not moving anymore, store open position
+				m_nCalibrationState = CALIBRATION_MEASURE;
 			}
+			DBPrintln("m_nCalibrationState " + String(m_nCalibrationState));
 		}
 		if( m_nRoofState == NOT_MOVING) {
+			DBPrintln("[ ********** " + String(__func__) + " ********** ]");
+			DBPrintln("NOT_MOVING");
 			// not moving anymore ..
 			m_nMoveDirection = MOVE_NONE;
 			m_bWasRunning = false;
@@ -783,6 +769,8 @@ void RoofClass::Run()
 		}
 
 		if(m_nRoofState == FINISHING_CLOSING) {
+			DBPrintln("[ ********** " + String(__func__) + " ********** ]");
+			DBPrintln("FINISHING_CLOSING");
 			if(digitalRead(CLOSE_PIN) != LOW) {
 				// not quite close. move a bit more.
 				if(position == 0) {
@@ -798,12 +786,13 @@ void RoofClass::Run()
 		}
 
 		if(m_nRoofState == FINISHING_OPENING) {
+			DBPrintln("[ ********** " + String(__func__) + " ********** ]");
+			DBPrintln("FINISHING_OPENING");
 			if(digitalRead(OPEN_PIN) != LOW) {
 				if(position == m_Config.stepsPerStroke) {
 					m_Config.stepsPerStroke +=1000;
 					stepper->setCurrentPosition(position);
 				}
-				m_bDoStepsPerStroke = true; // adjust open position value
 				Open();
 			}
 			else {
@@ -811,9 +800,19 @@ void RoofClass::Run()
 			}
 		}
 
+		if(m_nRoofState == CLOSING) { // if for some reason the closed limit switch was touched.. and we're not closed..
+			DBPrintln("[ ********** " + String(__func__) + " ********** ]");
+			DBPrintln("CLOSING if stopped in lalaland");
+			if(digitalRead(CLOSE_PIN) != LOW) {
+				MoveRelative(-STEPS_DEFAULT); // move toward close position
+			}
+		}
+
 		if(m_nRoofState == NOT_MOVING) {
 			m_nMoveDirection = MOVE_NONE;
 		}
+	DBPrintln("End of Run() m_nRoofState " + String(m_nRoofState));
+	DBPrintln("End of Run() m_nCalibrationState " + String(m_nCalibrationState));
 
 	} // end if (m_bWasRunning)
 }
@@ -821,6 +820,7 @@ void RoofClass::Run()
 void RoofClass::Stop()
 {
 	m_nRoofState = NOT_MOVING;
+	m_nCalibrationState = NOT_CALIBRATED;
 	stepper->forceStop();
 }
 
@@ -831,6 +831,11 @@ void RoofClass::motorStop()
 
 void RoofClass::motorMoveRelative(const long howFar)
 {
-	DBPrintln("motorMoveRelative");
+	DBPrintln("[ ********** " + String(__func__) + " ********** ]");
+	DBPrintln("motorMoveRelative " + String(howFar));
 	stepper->move(howFar);
+	// Wait for the motor to start
+	while(!stepper->isRunning()) {
+		vTaskDelay(1 / portTICK_PERIOD_MS);
+	}
 }
