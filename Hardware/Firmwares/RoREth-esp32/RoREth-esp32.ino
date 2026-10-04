@@ -114,8 +114,6 @@ void setup()
 	digitalWrite(ETHERNET_RESET, 0);
 	pinMode(ETHERNET_RESET, OUTPUT);
 	Computer.begin(115200);
-	//Computer.begin(115200, SERIAL_8N1, 16, 17); // pins 16 rx2, 17 tx2, 115200 bps, 8 bits no parity 1 stop bit
-
 
 	Roof = new RoofClass();
 	Roof->motorStop();
@@ -126,7 +124,7 @@ void setup()
 	esp_task_wdt_add(NULL);
 	disableCore0WDT();
 	disableCore1WDT();
-	xTaskCreatePinnedToCore(MotorTask, "MotorTask", 10000, NULL, 16, NULL,  0);
+	xTaskCreatePinnedToCore(MotorTask, "MotorTask", 32768, NULL, 16, NULL,  0);
 
 	RoR_Server = new NetworkServer(CMD_SERVER_PORT);
 	RoR_Server->begin();
@@ -173,6 +171,7 @@ void loop()
 //
 void MotorTask(void *)
 {
+	const TickType_t xDelay = 50/ portTICK_PERIOD_MS; // 50ms task block to give time back
 	DBPrintln("========== Motor task starting ==========");
 	DBPrintln("========== Motor task Attaching interrupt handler ==========");
 	attachInterrupt(digitalPinToInterrupt(CLOSE_PIN), closeIntHandler, FALLING);
@@ -187,6 +186,7 @@ void MotorTask(void *)
 		Roof->Run();
 		taskYIELD();
 		esp_task_wdt_reset();
+		vTaskDelay(xDelay);
 	}
 }
 
@@ -669,6 +669,6 @@ void Abort()
 {
 	String shutterMessage;
 	if(Roof) {
-		Roof->Stop();
+		Roof->Stop(); // we want a soft stop to not break hardware as a roof can have quite a bit of momentum due to its weight
 	}
 }

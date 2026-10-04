@@ -89,8 +89,10 @@ public:
 	void        Run();
 	void        motorStop();
 	void		Open();
+	void		Open(long steps);
 	void		Close();
-	void		Stop();
+	void		Close(long steps);
+	void		Stop(bool bHardStop = false);
 	void        motorMoveRelative(const long howFar);
 	void		GotoPosition(const long nPos);
 	bool		isRunning();
@@ -562,16 +564,14 @@ void RoofClass::StartCalibrating()
 	if (m_nRoofState != CLOSED ) { // close to restart calibration from close state
 		DBPrintln("Closing for calibration");
 		m_nCalibrationState = CALIBRATION_STEP_RESET;
-		m_nRoofState = CLOSING;
-		MoveRelative(-STEPS_DEFAULT); // move toward close position
+		Close(-STEPS_DEFAULT); // move toward close position
 	}
 	else {
 		stepper->setCurrentPosition(0);
 		DBPrintln("Opening for calibration");
 		DBPrintln("m_nCalibrationState = CALIBRATION_STEP_OPENING");
 		m_nCalibrationState = CALIBRATION_STEP_OPENING;
-		m_nRoofState = OPENING;
-		MoveRelative(STEPS_DEFAULT); // move toward open position
+		Open(STEPS_DEFAULT); // move toward open position
 	}
 	DBPrintln("m_nRoofState " + String(m_nRoofState));
 	DBPrintln("m_nCalibrationState " + String(m_nCalibrationState));
@@ -587,9 +587,8 @@ void RoofClass::Calibrate()
 	DBPrintln("[ ********** " + String(__func__) + " ********** ]");
 				DBPrintln("CALIBRATION_STEP_OPENING");
 				m_nCalibrationState = CALIBRATION_STEP_OPENING;
-				m_nRoofState = OPENING;
 				stepper->setCurrentPosition(0);
-				MoveRelative(STEPS_DEFAULT);
+				Open(STEPS_DEFAULT);
 			}
 			break;
 
@@ -653,6 +652,12 @@ void RoofClass::GotoPosition(const long nPos)
 
 void RoofClass::Open()
 {
+
+	Open(m_Config.stepsPerStroke);
+}
+
+void RoofClass::Open(long nSteps)
+{
 	if (digitalRead(OPEN_PIN) == 0) {
 		m_nRoofState = OPEN;
 		return;
@@ -660,10 +665,19 @@ void RoofClass::Open()
 
 	m_nRoofState = OPENING;
 	DBPrintln("m_nRoofState = OPENING");
-	GotoPosition(m_Config.stepsPerStroke);
+	GotoPosition(nSteps);
 }
 
 void RoofClass::Close()
+{
+	// if we are at position "0" but not closed :
+	if(stepper->getCurrentPosition() == 0)
+		Close(-STEPS_DEFAULT); // Force close
+	else
+		Close(0L);
+}
+
+void RoofClass::Close(long nSteps)
 {
 	if (digitalRead(CLOSE_PIN) == 0) {
 		m_nRoofState = CLOSED;
@@ -671,13 +685,8 @@ void RoofClass::Close()
 	}
 	m_nRoofState = CLOSING;
 	DBPrintln("m_nRoofState = CLOSING");
-	// if we are at position "0" but not closed :
-	if(stepper->getCurrentPosition() == 0)
-		GotoPosition(-STEPS_DEFAULT); // Force close
-	else
-		GotoPosition(0L); // close
+	GotoPosition(nSteps); // close
 }
-
 
 void RoofClass::ButtonOpenCheck()
 {
@@ -705,7 +714,7 @@ void RoofClass::Run()
 	if(bOpenButtonPressed) {
 		bOpenButtonPressed = false;
 		if(m_nRoofState == OPENING || m_nCalibrationState >= CALIBRATION_STEP_RESET) {
-			Stop();
+			Stop(); // we want a soft stop to not break hardware as a roof can have quite a bit of momentum due to its weight
 		}
 		else {
 			Open();
@@ -714,7 +723,7 @@ void RoofClass::Run()
 	if(bCloseButtonPressed) {
 		bCloseButtonPressed = false;
 		if(m_nRoofState == CLOSING || m_nCalibrationState >= CALIBRATION_STEP_RESET) {
-			Stop();
+			Stop(); // we want a soft stop to not break hardware as a roof can have quite a bit of momentum due to its weight
 		}
 		else {
 			Close();
@@ -817,11 +826,13 @@ void RoofClass::Run()
 	} // end if (m_bWasRunning)
 }
 
-void RoofClass::Stop()
+void RoofClass::Stop(bool bHardStop)
 {
 	m_nRoofState = NOT_MOVING;
-	m_nCalibrationState = NOT_CALIBRATED;
-	stepper->forceStop();
+	if(bHardStop)
+		stepper->forceStop();
+	else
+		stepper->stopMove();
 }
 
 void RoofClass::motorStop()
