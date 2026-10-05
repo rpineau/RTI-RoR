@@ -331,12 +331,12 @@ paths:
   /setup/roofAcceleration:
     get:
       summary: Get the controller move acceleration
-      description: 'Retrieve the controller move acceleration in step per second
+      description: 'Retrieve the controller motor acceleration in step per second per second
         per second.'
       operationId: getRoofAcceleration
       responses:
         '200':
-          description: Controller move acceleration in step per second per second
+          description: Controller motor acceleration in step step per second per second
         '400':
           $ref: '#/components/responses/Response400'
       tags:
@@ -348,7 +348,7 @@ paths:
       operationId: setRoofAcceleration
       responses:
         '200':
-          description: Controller move acceleration successfully set
+          description: Controller motor acceleration successfully set
         '400':
           $ref: '#/components/responses/Response400'
       tags:
