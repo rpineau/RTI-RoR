@@ -541,14 +541,23 @@ components:
       - 0
       - 1
       - 2
+      - 3
+      - 4
+      - 5
       x-enum-varnames:
       - NOT_CALIBRATED
-      - CALIBRATING
+      - CALIBRATION_STEP_RESET
+      - CALIBRATION_STEP_OPENING
+      - CALIBRATION_STEP_OPEN
+      - CALIBRATION_MEASURE
       - CALIBRATED
       x-enum-descriptions:
-      - Controller is not calibrated
-      - Controller is measuring number of steps per rotation.
-      - Controller is calibrated.
+      - Not calibrated
+      - Closing roof to calibrate
+      - Opening roof to calibrate
+      - Roof is open
+      - Measuring number of steps per rotation.
+      - Calibrated.
 
     UnsafeAction:
       type: integer

@@ -9,7 +9,6 @@
 #include <functional>
 #include <Network.h>
 #include <ArduinoJson.h>
-// Alpaca REST server
 #include <UUID.h>
 #include <aWOT.h>
 
@@ -1070,7 +1069,7 @@ void getShutterStatus(Request &req, Response &res)
 		case OPEN :
 			AlpacaResp["value"] = A_OPEN;
 			break;
-		case CLOSED : 
+		case CLOSED :
 			AlpacaResp["value"] = A_CLOSED;
 			break;
 		case OPENING :
@@ -1081,7 +1080,7 @@ void getShutterStatus(Request &req, Response &res)
 		case FINISHING_CLOSING :
 			AlpacaResp["value"] = A_CLOSING;
 			break;
-		case ROOF_ERROR : 
+		case ROOF_ERROR :
 			AlpacaResp["value"] = A_ERROR;
 			break;
 		default:
@@ -1825,7 +1824,7 @@ void openRoof(Request &req, Response &res)
 	String sResp;
 
 	Roof->Open();
-	
+
 	DBPrintln("[ ********** " + String(__func__) + " ********** ]");
 
 	controllerResp["value"] = A_OPENING;
@@ -1842,7 +1841,7 @@ void closeRoof(Request &req, Response &res)
 	String sResp;
 
 	Roof->Close();
-	
+
 	DBPrintln("[ ********** " + String(__func__) + " ********** ]");
 
 	controllerResp["value"] = A_CLOSING;
@@ -1866,7 +1865,7 @@ void getRoofState(Request &req, Response &res)
 		case OPEN :
 			controllerResp["value"] = A_OPEN;
 			break;
-		case CLOSED : 
+		case CLOSED :
 			controllerResp["value"] = A_CLOSED;
 			break;
 		case OPENING :
@@ -1877,7 +1876,7 @@ void getRoofState(Request &req, Response &res)
 		case FINISHING_CLOSING :
 			controllerResp["value"] = A_CLOSING;
 			break;
-		case ROOF_ERROR : 
+		case ROOF_ERROR :
 			controllerResp["value"] = A_ERROR;
 			break;
 		default:
