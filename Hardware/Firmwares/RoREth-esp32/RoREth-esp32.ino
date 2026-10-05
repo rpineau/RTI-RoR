@@ -621,6 +621,10 @@ void ProcessCommand(int nSource)
 			serialMessage = String(SPEED_ROOF) + String(Roof->GetMaxSpeed());
 			break;
 
+		case CAL_STATUS:
+			serialMessage = String(CAL_STATUS) + String(Roof->getRoofCalibrationState());
+			break;
+
 		case STATE_ROOF:
 			sTmpString = String(STATE_ROOF);
 			serialMessage = sTmpString + Roof->getRoofState();

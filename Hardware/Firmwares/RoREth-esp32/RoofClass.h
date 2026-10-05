@@ -529,8 +529,12 @@ void RoofClass::SetStepsPerStroke(const long newCount, bool bSave)
 
 void RoofClass::saveRoofCalibrationState()
 {
+ 	DBPrintln("[ ********** " + String(__func__) + " ********** ]");
+	m_Config.calibrationState = m_nCalibrationState;
+	DBPrintln("m_Config.calibrationState = " + String(m_Config.calibrationState));
+	m_Config.calibrationState = m_nCalibrationState;
 	m_preferences.begin("RTI_RoR", false);
-	m_preferences.putInt("calState", m_nCalibrationState);
+	m_preferences.putInt("calState", m_Config.calibrationState);
 	m_preferences.end();
 }
 void RoofClass::restoreDefaultMotorSettings()
@@ -610,7 +614,7 @@ void RoofClass::Calibrate()
 
 int RoofClass::getRoofCalibrationState()
 {
-	return m_nCalibrationState;
+	return m_Config.calibrationState;
 }
 //
 // Movers
