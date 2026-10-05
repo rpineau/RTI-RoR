@@ -393,8 +393,6 @@ void CheckForCommands()
 
 void CheckForCondition()
 {
-	String shutterMessage;
-
 	int nPosition, nParkPos;
 	if(bIsSafe != Roof->GetConditionStatus()) { // was there a state change ?
 		bIsSafe = Roof->GetConditionStatus();
@@ -667,7 +665,6 @@ void ProcessCommand(int nSource)
 
 void Abort()
 {
-	String shutterMessage;
 	if(Roof) {
 		Roof->Stop(); // we want a soft stop to not break hardware as a roof can have quite a bit of momentum due to its weight
 	}

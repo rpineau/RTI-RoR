@@ -213,7 +213,7 @@ paths:
       operationId: setNetworkDefaults
       responses:
         '200':
-          description: Shutter controller network settings successfully reset to default
+          description: Roof controller network settings successfully reset to default
         '400':
           $ref: '#/components/responses/Response400'
       tags:
@@ -342,8 +342,8 @@ paths:
       tags:
       - Roof Controller
     put:
-      summary: set the controller rotation acceleration in step per second per second
-      description: 'Set the controller rotation acceleration ins step per second per
+      summary: set the controller acceleration in step per second per second
+      description: 'Set the controller acceleration in step per second per second
         second.'
       operationId: setRoofAcceleration
       responses:
@@ -468,12 +468,12 @@ paths:
 
   /setup/getRoofState:
     get:
-      summary: Get the shutter(s) state
-      description: 'Retrieve the shutter(s) state'
-      operationId: getShutterState
+      summary: Get the Roof state
+      description: 'Retrieve the Roof state'
+      operationId: getRoofState
       responses:
         '200':
-          description: Shutter state successfully retrieved
+          description: Roof state successfully retrieved
           content:
             application/json:
               schema:
@@ -556,7 +556,7 @@ components:
       - Closing roof to calibrate
       - Opening roof to calibrate
       - Roof is open
-      - Measuring number of steps per rotation.
+      - Measuring number of steps per stroke.
       - Calibrated.
 
     UnsafeAction:
@@ -586,11 +586,11 @@ components:
       - CLOSING
       - ERROR
       x-enum-descriptions:
-      - Shutter is open
-      - Shutter is closed
-      - Shutter is opening
-      - Shutter is closing
-      - Shutter state is unknown
+      - Roof is open
+      - Roof is closed
+      - Roof is opening
+      - Roof is closing
+      - Roof state is unknown
 
     Response400ErrorInfo:
       type: object

@@ -635,7 +635,7 @@ const char ROOF_CONTROLLER_HTML[] =
   "    1: 'Closing roof to calibrate',\n"
   "    2: 'Opening roof to calibrate',\n"
   "    3: 'Roof is open',\n"
-  "    4: 'Measuring number of steps per rotation.',\n"
+  "    4: 'Measuring number of steps per stroke.',\n"
   "    5: 'Calibrated.'\n"
   "  };\n"
   "  return m[s] ?? ('Unknown state: ' + s);\n"

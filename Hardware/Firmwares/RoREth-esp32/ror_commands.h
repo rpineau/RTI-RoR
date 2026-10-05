@@ -16,11 +16,11 @@ const char RESTORE_NET_DEFAULT			= 'x'; //
 const char COND_ROOF                 	= 'F'; // Get rain status
 const char RESET_ALL					= 'A'; // resets all setting to factory default
 
-const char CLOSE_ROOF                    = 'C'; // Close shutter
+const char CLOSE_ROOF                    = 'C'; // Close Roof
 const char ROOF_RESTORE_MOTOR_DEFAULT    = 'D'; // Restore default values for motor control.
 const char ACCELERATION_ROOF             = 'E'; // Get/Set stepper acceleration
-const char STATE_ROOF                    = 'M'; // Get shutter state
-const char OPEN_ROOF                     = 'O'; // Open the shutter
+const char STATE_ROOF                    = 'M'; // Get roof state
+const char OPEN_ROOF                     = 'O'; // Open the roof
 const char POSITION_ROOF                 = 'P'; // Get step position
 const char SPEED_ROOF                    = 'R'; // Get/Set step rate (speed)
 const char STEPSPER_ROOF                 = 'T'; // Get/Set steps per stroke
