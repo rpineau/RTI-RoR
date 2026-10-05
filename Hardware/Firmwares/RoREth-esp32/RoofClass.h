@@ -285,7 +285,7 @@ void RoofClass::LoadConfig()
 	m_Config.ipConfig.dns.fromString(m_preferences.getString("dns","192.168.0.1"));
 	m_Config.ipConfig.gateway.fromString(m_preferences.getString("gateway","192.168.0.1"));
 	m_Config.ipConfig.subnetMask.fromString(m_preferences.getString("subnetMask","255.255.255.0"));
-	m_Config.calibrationState = m_preferences.getInt("calibrationState",NOT_CALIBRATED);
+	m_Config.calibrationState = m_preferences.getInt("calState",NOT_CALIBRATED);
 
 	DBPrintln("maxSpeed          : " + String(m_Config.maxSpeed));
 	DBPrintln("acceleration      : " + String(m_Config.acceleration));
@@ -530,7 +530,7 @@ void RoofClass::SetStepsPerStroke(const long newCount, bool bSave)
 void RoofClass::saveRoofCalibrationState()
 {
 	m_preferences.begin("RTI_RoR", false);
-	m_preferences.putInt("calibrationState", m_nCalibrationState);
+	m_preferences.putInt("calState", m_nCalibrationState);
 	m_preferences.end();
 }
 void RoofClass::restoreDefaultMotorSettings()
