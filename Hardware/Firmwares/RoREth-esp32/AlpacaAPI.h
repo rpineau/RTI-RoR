@@ -1774,7 +1774,6 @@ void restoreMotorValues(Request &req, Response &res)
 	res.write((uint8_t*)(sResp.c_str()),sResp.length());
 }
 
-#pragma message FIXME
 void unsafeAction(Request &req, Response &res)
 {
 	JsonDocument controllerResp;
@@ -1789,12 +1788,12 @@ void unsafeAction(Request &req, Response &res)
 		}
 		else {
 			if(FormData["value"].is<long>()) {
-				// Roof->SetConditionsAction(FormData["value"]);
+				Roof->SetConditionsAction(FormData["value"]);
 			}
 		}
 	}
 
-	// controllerResp["value"] = Roof->GetConditionsAction();
+	controllerResp["value"] = Roof->GetConditionsAction();
 	serializeJson(controllerResp, sResp);
 	DBPrintln("sResp : " + sResp);
 

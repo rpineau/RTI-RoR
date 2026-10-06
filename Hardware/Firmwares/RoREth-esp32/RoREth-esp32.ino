@@ -393,14 +393,25 @@ void CheckForCommands()
 
 void CheckForCondition()
 {
-	int nPosition, nParkPos;
+	int nAction;
+
 	if(bIsSafe != Roof->GetConditionStatus()) { // was there a state change ?
 		bIsSafe = Roof->GetConditionStatus();
 	}
 	if(!bIsSafe) {
-		// emergency close
-		// need to make sure mount is parked.
-		// might need to leave this to the app control for now.
+		nAction = Roof-> GetConditionsAction();
+		switch(nAction) {
+			case CLOSE_ROOF_ON_UNSAFE:
+				// emergency close
+				// need to make sure mount is parked.
+				// might need to leave this to the app control for now.
+				// Roof->Close();
+				break;
+			case DO_NOTHING:
+			default:
+				break;
+		}
+
 	}
 }
 

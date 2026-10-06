@@ -30,12 +30,14 @@ typedef struct RoofConfiguration {
 	bool            reversed;
 	IPConfig        ipConfig;
 	int				calibrationState;
+	int				unsafeAction;
 } Configuration;
 
 
 
 enum RoofStates { OPEN, CLOSED, NOT_MOVING, OPENING, CLOSING, ROOF_ERROR, FINISHING_OPENING, FINISHING_CLOSING};
-enum CalibrationState { NOT_CALIBRATED, CALIBRATION_STEP_RESET, CALIBRATION_STEP_OPENING, CALIBRATION_STEP_OPEN, CALIBRATION_MEASURE, CALIBRATED};
+enum CalibrationStates { NOT_CALIBRATED, CALIBRATION_STEP_RESET, CALIBRATION_STEP_OPENING, CALIBRATION_STEP_OPEN, CALIBRATION_MEASURE, CALIBRATED};
+enum UnsafeActions {DO_NOTHING, CLOSE_ROOF_ON_UNSAFE};
 
 FastAccelStepperEngine engine = FastAccelStepperEngine();
 FastAccelStepper *stepper = NULL;
@@ -109,6 +111,9 @@ public:
 	String      getIPGateway();
 	void        setIPGateway(String ipGateway);
 	void		resetNetworkToDefaults();
+
+	void		SetConditionsAction(int nAction);
+	int			GetConditionsAction();
 
 	void		resetAlltoDefault();
 
@@ -286,6 +291,7 @@ void RoofClass::LoadConfig()
 	m_Config.ipConfig.gateway.fromString(m_preferences.getString("gateway","192.168.0.1"));
 	m_Config.ipConfig.subnetMask.fromString(m_preferences.getString("subnetMask","255.255.255.0"));
 	m_Config.calibrationState = m_preferences.getInt("calState",NOT_CALIBRATED);
+	m_Config.unsafeAction = m_preferences.getInt("condAction", DO_NOTHING);
 
 	DBPrintln("maxSpeed          : " + String(m_Config.maxSpeed));
 	DBPrintln("acceleration      : " + String(m_Config.acceleration));
@@ -616,6 +622,22 @@ int RoofClass::getRoofCalibrationState()
 {
 	return m_Config.calibrationState;
 }
+
+void RoofClass::SetConditionsAction(int nAction)
+{
+	m_Config.unsafeAction = nAction;
+	m_preferences.begin("RTI_RoR", false);
+	m_preferences.putInt("condAction", m_Config.unsafeAction);
+	m_preferences.end();
+
+}
+
+int RoofClass::GetConditionsAction()
+{
+	return m_Config.unsafeAction;
+}
+
+
 //
 // Movers
 //
