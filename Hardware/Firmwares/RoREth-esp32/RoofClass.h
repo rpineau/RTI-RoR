@@ -35,9 +35,10 @@ typedef struct RoofConfiguration {
 
 
 
-enum RoofStates { OPEN, CLOSED, NOT_MOVING, OPENING, CLOSING, ROOF_ERROR, FINISHING_OPENING, FINISHING_CLOSING};
-enum CalibrationStates { NOT_CALIBRATED, CALIBRATION_STEP_RESET, CALIBRATION_STEP_OPENING, CALIBRATION_STEP_OPEN, CALIBRATION_MEASURE, CALIBRATED};
-enum UnsafeActions {DO_NOTHING, CLOSE_ROOF_ON_UNSAFE};
+enum RoofStates { OPEN, CLOSED, NOT_MOVING, OPENING, CLOSING, ROOF_ERROR, FINISHING_OPENING, FINISHING_CLOSING };
+enum CalibrationStates { NOT_CALIBRATED, CALIBRATION_STEP_RESET, CALIBRATION_STEP_OPENING, CALIBRATION_STEP_OPEN, CALIBRATION_MEASURE, CALIBRATED };
+enum UnsafeActions { DO_NOTHING, CLOSE_ROOF_ON_UNSAFE };
+enum AtParkState { MOUNT_PARKED, MOUNT_UNPARKED };
 
 FastAccelStepperEngine engine = FastAccelStepperEngine();
 FastAccelStepper *stepper = NULL;
@@ -79,6 +80,7 @@ public:
 	double      GetAngularDistance(const double fromAngle, const double toAngle);
 
 	int         getRoofState();
+	int			getAtParkState();
 
 	// Homing and Calibration
 	void        StartCalibrating();
@@ -167,7 +169,7 @@ RoofClass::RoofClass()
 	pinMode(BUTTON_CLOSE,			INPUT);
 	pinMode(BUTTON_OPEN,			INPUT);
 	pinMode(COND_SENSOR_PIN,		INPUT);
-
+	pinMode(AT_PARK_PIN,			INPUT);
 	pinMode(SPARE1,					INPUT);
 	pinMode(SPARE2,					INPUT);
 
@@ -557,6 +559,12 @@ int RoofClass::getRoofState()
 	return m_nRoofState;
 }
 
+int RoofClass::getAtParkState()
+{
+	int nAtPark;
+	nAtPark = digitalRead(AT_PARK_PIN);
+	return nAtPark;
+}
 
 void RoofClass::StartCalibrating()
 {

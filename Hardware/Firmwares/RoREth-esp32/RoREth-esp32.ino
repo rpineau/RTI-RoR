@@ -402,10 +402,12 @@ void CheckForCondition()
 		nAction = Roof-> GetConditionsAction();
 		switch(nAction) {
 			case CLOSE_ROOF_ON_UNSAFE:
-				// emergency close
-				// need to make sure mount is parked.
-				// might need to leave this to the app control for now.
-				// Roof->Close();
+				if(Roof->getRoofState() != CLOSED) { // emergency close
+					// need to make sure mount is parked.
+					if(Roof->getAtParkState() == MOUNT_PARKED) {
+						Roof->Close();
+					}
+				}
 				break;
 			case DO_NOTHING:
 			default:

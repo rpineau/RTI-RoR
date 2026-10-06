@@ -41,6 +41,7 @@
 #define BUTTON_CLOSE        14
 #define BUTTON_OPEN         27
 #define COND_SENSOR_PIN     25
+#define AT_PARK_PIN			35
 #define SPARE1				34
 #define SPARE2				26
 // ouput
