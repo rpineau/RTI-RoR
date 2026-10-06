@@ -686,12 +686,16 @@ void RoofClass::GotoPosition(const long nPos)
 
 void RoofClass::Open()
 {
-
+	if(!m_bIsSafe)
+		return;
 	Open(m_Config.stepsPerStroke);
 }
 
 void RoofClass::Open(long nSteps)
 {
+	if(!m_bIsSafe)
+		return;
+
 	if (digitalRead(OPEN_PIN) == 0) {
 		m_nRoofState = OPEN;
 		return;

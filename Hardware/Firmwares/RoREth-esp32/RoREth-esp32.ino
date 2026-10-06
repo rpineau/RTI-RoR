@@ -394,6 +394,7 @@ void CheckForCommands()
 void CheckForCondition()
 {
 	int nAction;
+	int nRoofState;
 
 	if(bIsSafe != Roof->GetConditionStatus()) { // was there a state change ?
 		bIsSafe = Roof->GetConditionStatus();
@@ -402,7 +403,8 @@ void CheckForCondition()
 		nAction = Roof-> GetConditionsAction();
 		switch(nAction) {
 			case CLOSE_ROOF_ON_UNSAFE:
-				if(Roof->getRoofState() != CLOSED) { // emergency close
+				nRoofState = Roof->getRoofState();
+				if( nRoofState != CLOSED && nRoofState != CLOSING) { // emergency close
 					// need to make sure mount is parked.
 					if(Roof->getAtParkState() == MOUNT_PARKED) {
 						Roof->Close();
