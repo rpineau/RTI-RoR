@@ -17,8 +17,6 @@
 
 
 #include "Arduino.h"
-#include <rtc_wdt.h>
-#include <esp_task_wdt.h>
 #include "config.h"
 
 bool firstLoop = true;
@@ -87,13 +85,6 @@ RoRAlpacaDiscoveryServer *AlpacaDiscoveryServer;
 #endif
 
 void MotorTask(void *);
-/*
-esp_task_wdt_config_t twdt_config = {
-	.timeout_ms = 1000000,
-	.idle_core_mask = 0,    // Bitmask of cores
-	.trigger_panic = false,
-};
-*/
 
 //
 // Setup and main loops
@@ -121,14 +112,6 @@ void setup()
 	Roof->motorStop();
 
 	configureEthernet();
-/*
-	esp_task_wdt_deinit();
-	esp_task_wdt_init(&twdt_config);
-	esp_task_wdt_add(NULL);
-	disableCore0WDT();
-	disableCore1WDT();
-*/
-
 	xTaskCreatePinnedToCore(MotorTask, "MotorTask", 32768, NULL, 16, NULL,  0);
 
 	RoR_Server = new NetworkServer(CMD_SERVER_PORT);
@@ -168,7 +151,6 @@ void loop()
 #endif
 
 	taskYIELD();
-	// esp_task_wdt_reset();
 }
 
 //
@@ -185,12 +167,10 @@ void MotorTask(void *)
 	attachInterrupt(BUTTON_OPEN, buttonOpenHandler, FALLING);
 	attachInterrupt(COND_SENSOR_PIN, conditionIntHandler, CHANGE);
 
-	// esp_task_wdt_add(NULL);
 	DBPrintln("========== Motor task ready ==========");
 	for(;;) {
 		Roof->Run();
 		taskYIELD();
-		// esp_task_wdt_reset();
 		vTaskDelay(xDelay);
 	}
 }
