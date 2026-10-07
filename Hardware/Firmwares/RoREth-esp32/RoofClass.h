@@ -556,6 +556,14 @@ void RoofClass::restoreDefaultMotorSettings()
 
 int RoofClass::getRoofState()
 {
+	if(digitalRead(CLOSE_PIN) == LOW) {
+		// we're at the close position
+		m_nRoofState = CLOSED;
+	}
+	else if(digitalRead(OPEN_PIN) == LOW) {
+		// we're at the open position
+		m_nRoofState = OPEN;
+	}
 	return m_nRoofState;
 }
 
@@ -847,11 +855,18 @@ void RoofClass::Run()
 			}
 		}
 
-		if(m_nRoofState == CLOSING) { // if for some reason the closed limit switch was touched.. and we're not closed..
+		if(m_nRoofState == CLOSING) { // We're closing and the motor has stopped but we're not closed
 			DBPrintln("[ ********** " + String(__func__) + " ********** ]");
 			DBPrintln("CLOSING if stopped in lalaland");
 			if(digitalRead(CLOSE_PIN) != LOW) {
 				MoveRelative(-STEPS_DEFAULT); // move toward close position
+			}
+		}
+		if(m_nRoofState == OPENING) { //  We're opening and the motor has stopped but we're not opened
+			DBPrintln("[ ********** " + String(__func__) + " ********** ]");
+			DBPrintln("Opening if stopped in lalaland");
+			if(digitalRead(OPEN_PIN) != LOW) {
+				MoveRelative(STEPS_DEFAULT); // move toward close position
 			}
 		}
 
