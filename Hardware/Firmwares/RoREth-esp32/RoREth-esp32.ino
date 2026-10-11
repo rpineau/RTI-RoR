@@ -25,6 +25,7 @@ bool firstLoop = true;
 #pragma message "Ethernet enabled"
 // include and some defines for ethernet connection
 #include <Network.h>
+#include <ESPmDNS.h>
 
 #ifdef USE_OTA_UPDATE
 #pragma message "OTA Update enable"
@@ -33,6 +34,7 @@ bool firstLoop = true;
 #endif
 
 byte MAC_Address[6];
+String sHostname;
 
 IPConfig ServerConfig;
 volatile bool ethernetPresent;
@@ -122,6 +124,17 @@ void setup()
 	AlpacaServer = new DomeAlpacaServer();
 	AlpacaServer->startServer();
 #endif
+	// Start mDNS
+	MDNS.begin(sHostname.c_str());
+	MDNS.addService("http", "tcp", 80); // web ui and Alpaca
+#ifdef USE_OTA_UPDATE
+	DBPrintln("OTA Update server started on port " + String(OTA_PORT));
+	httpUpdater.setup(&httpServer); 
+	httpServer.begin();
+	MDNS.addService("OTA_update", "tcp", OTA_PORT);
+	MDNS.addServiceTxt("OTA_update", "tcp", "url", "http://" + sHostname + ".local:" + String(OTA_PORT) + "/update");
+#endif
+
 	DBPrintln("========== Ready ==========");
 }
 
@@ -247,7 +260,10 @@ bool initEthernet(bool bUseDHCP, IPAddress ip, IPAddress dns, IPAddress gateway,
 	}
 
 	RoR_Ethernet.macAddress(MAC_Address);
-	RoR_Ethernet.setHostname("RTI-RoR");
+	sHostname = "RTI-RoR-" + String(MAC_Address[3], HEX)
+													+ String(MAC_Address[4], HEX)
+													+ String(MAC_Address[5], HEX);
+	RoR_Ethernet.setHostname(sHostname.c_str());
 
 	DBPrintln("========== Setting IP config ==========");
 	// try DHCP if set

@@ -5,8 +5,8 @@
 #ifndef __R_CONFIG__
 #define __R_CONFIG__
 
-// #define DEBUG   // enable debug to serial port defined as DebugPort
-// #define DEBUG_TO_COMPUTER // send all debug to usb serial instead of 3 pin serial debug.
+#define DEBUG   // enable debug to serial port defined as DebugPort
+#define DEBUG_TO_COMPUTER // send all debug to usb serial instead of 3 pin serial debug.
 
 #ifdef DEBUG
 #pragma message "Debug messages enabled"
@@ -25,6 +25,7 @@
 
 #define VERSION "3.000"
 #define USE_ALPACA
+#define USE_OTA_UPDATE
 #define Computer Serial     // USB = Serial
 #ifdef DEBUG
 #ifdef DEBUG_TO_COMPUTER
